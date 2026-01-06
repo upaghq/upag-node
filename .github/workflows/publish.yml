@@ -36,20 +36,16 @@ jobs:
         run: npm ci
 
       - name: Build
-        working-directory: packages/upag-node
         run: npm run build
 
       - name: Run tests
-        working-directory: packages/upag-node
         run: npm test
 
       - name: Bump version
         if: github.event.inputs.version != 'skip' && github.event.inputs.version != ''
-        working-directory: packages/upag-node
         run: npm version ${{ github.event.inputs.version }} --no-git-tag-version
 
       - name: Publish to npm
-        working-directory: packages/upag-node
         run: npm publish --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
