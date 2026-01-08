@@ -1,6 +1,6 @@
 {
   "name": "upag",
-  "version": "1.0.0",
+  "version": "1.0.2",
   "description": "Official Upag Node.js SDK for payment and subscription management",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",

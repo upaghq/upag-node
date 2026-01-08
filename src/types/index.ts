@@ -16,6 +16,9 @@ export interface ListParams {
   page?: number;
 }
 
+// Currency type
+export type Currency = 'brl' | 'usd';
+
 // Customer types
 export interface Customer {
   id: string;
@@ -24,6 +27,12 @@ export interface Customer {
   name: string;
   phone?: string | null;
   taxId?: string | null;
+  line1?: string | null;
+  line2?: string | null;
+  city?: string | null;
+  state?: string | null;
+  country?: string | null;
+  zipCode?: string | null;
   metadata?: Record<string, any> | null;
   livemode: boolean;
   createdAt: Date;
@@ -36,34 +45,64 @@ export interface CreateCustomerParams {
   name: string;
   phone?: string;
   taxId?: string;
-  metadata?: Record<string, any>;
+  line1?: string | null;
+  line2?: string | null;
+  city?: string | null;
+  state?: string | null;
+  country?: string | null;
+  zipCode?: string | null;
 }
 
 export interface UpdateCustomerParams {
-  email?: string;
-  name?: string;
-  phone?: string;
-  taxId?: string;
-  metadata?: Record<string, any>;
+  email?: string | null;
+  name?: string | null;
+  phone?: string | null;
+  taxId?: string | null;
+  line1?: string | null;
+  line2?: string | null;
+  city?: string | null;
+  state?: string | null;
+  country?: string | null;
+  zipCode?: string | null;
 }
 
 // Payment Method types
-export type PaymentMethodType = 'credit_card' | 'pix' | 'boleto';
+export type PaymentMethodType = 'credit_card' | 'pix';
+
+export interface CardParams {
+  number: string;
+  expiryMonth: string;
+  expiryYear: string;
+  cvv: string;
+  holderName: string;
+}
+
+export interface PixParams {
+  expiresIn?: number | null;
+}
+
+export interface CreateCreditCardPaymentMethodParams {
+  type: 'credit_card';
+  card: CardParams;
+}
+
+export interface CreatePixPaymentMethodParams {
+  type: 'pix';
+  pix?: PixParams;
+}
+
+export type CreatePaymentMethodParams = CreateCreditCardPaymentMethodParams | CreatePixPaymentMethodParams;
 
 export interface PaymentMethod {
   id: string;
   customerId: string;
   type: PaymentMethodType;
-  card?: {
-    brand: string;
-    last4: string;
-    expMonth: number;
-    expYear: number;
-  };
-  pix?: {
-    key?: string;
-  };
-  boleto?: Record<string, any>;
+  brand?: string | null;
+  firstDigits?: string | null;
+  lastDigits?: string | null;
+  expiryMonth?: number | null;
+  expiryYear?: number | null;
+  holderName?: string | null;
   metadata?: Record<string, any> | null;
   livemode: boolean;
   createdAt: Date;
@@ -71,49 +110,46 @@ export interface PaymentMethod {
   deletedAt?: Date | null;
 }
 
-export interface CreatePaymentMethodParams {
-  customerId: string;
-  type: PaymentMethodType;
-  card?: {
-    number: string;
-    expMonth: number;
-    expYear: number;
-    cvc: string;
-    holderName: string;
-  };
-  metadata?: Record<string, any>;
-}
-
 // Payment types
-export type PaymentStatus = 'pending' | 'processing' | 'succeeded' | 'failed' | 'canceled';
-export type PaymentMethod_Type = 'credit_card' | 'pix' | 'boleto';
+export type PaymentStatus = 'incomplete' | 'pending' | 'approved' | 'refused' | 'failed' | 'refunded';
 
 export interface Payment {
   id: string;
   accountId: string;
-  customerId: string;
+  customer: Customer;
+  paymentMethod: PaymentMethod;
   amount: number;
-  currency: string;
+  currency: Currency;
   status: PaymentStatus;
-  paymentMethod: PaymentMethod_Type;
-  paymentMethodId?: string | null;
-  description?: string | null;
-  metadata?: Record<string, any> | null;
+  gross: number;
+  mdr: number;
+  net: number;
+  interest: number;
+  installments: number;
+  dueAt?: Date | null;
   paidAt?: Date | null;
-  canceledAt?: Date | null;
+  metadata?: Record<string, any> | null;
   livemode: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
 
+// Customer input can be either an ID string or an object to create inline
+export type CustomerInput = string | CreateCustomerParams;
+
+// Payment method input can be either an ID string or an object to create inline
+export type PaymentMethodInput = string | CreatePaymentMethodParams;
+
 export interface CreatePaymentParams {
-  customerId: string;
+  customer: CustomerInput;
+  paymentMethod: PaymentMethodInput;
   amount: number;
-  currency?: string;
-  paymentMethod: PaymentMethod_Type;
-  paymentMethodId?: string;
-  description?: string;
-  metadata?: Record<string, any>;
+  currency: Currency;
+  installments?: number | null;
+}
+
+export interface ListPaymentsParams extends ListParams {
+  customer?: string;
 }
 
 // Error types
@@ -124,4 +160,3 @@ export interface UpagError {
   statusCode?: number;
   details?: any;
 }
-

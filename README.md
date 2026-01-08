@@ -34,7 +34,11 @@ const customer = await upag.customers.create({
   name: 'John Doe',
   phone: '+5511999999999',
   taxId: '12345678900',
-  metadata: { plan: 'premium' }
+  line1: '123 Main St',
+  city: 'São Paulo',
+  state: 'SP',
+  country: 'Brazil',
+  zipCode: '01310-100'
 });
 
 // Retrieve a customer
@@ -43,13 +47,13 @@ const customer = await upag.customers.retrieve('cus_123');
 // Update a customer
 const updated = await upag.customers.update('cus_123', {
   name: 'John Smith',
-  metadata: { plan: 'enterprise' }
+  phone: '+5511888888888'
 });
 
 // List customers
 const customers = await upag.customers.list({
   limit: 10,
-  offset: 0
+  page: 1
 });
 
 // Delete a customer
@@ -60,43 +64,46 @@ const deleted = await upag.customers.delete('cus_123');
 
 ```typescript
 // Create a credit card payment method
-const paymentMethod = await upag.paymentMethods.create({
-  customerId: 'cus_123',
+const paymentMethod = await upag.paymentMethods.create('cus_123', {
   type: 'credit_card',
   card: {
     number: '4242424242424242',
-    expMonth: 12,
-    expYear: 2025,
-    cvc: '123',
+    expiryMonth: '12',
+    expiryYear: '2025',
+    cvv: '123',
     holderName: 'John Doe'
   }
 });
 
-// Retrieve a payment method
-const paymentMethod = await upag.paymentMethods.retrieve('pm_123');
-
-// List payment methods
-const paymentMethods = await upag.paymentMethods.list({
-  limit: 10,
-  offset: 0
+// Create a PIX payment method
+const pixMethod = await upag.paymentMethods.create('cus_123', {
+  type: 'pix',
+  pix: { expiresIn: 600 } // 10 minutes
 });
 
+// Retrieve a payment method
+const paymentMethod = await upag.paymentMethods.retrieve('cus_123', 'pm_456');
+
 // List payment methods for a customer
-const customerPaymentMethods = await upag.paymentMethods.listByCustomer('cus_123');
+const paymentMethods = await upag.paymentMethods.list('cus_123', {
+  limit: 10,
+  page: 1
+});
 
 // Delete a payment method
-const deleted = await upag.paymentMethods.delete('pm_123');
+const deleted = await upag.paymentMethods.delete('cus_123', 'pm_456');
 ```
 
 ### Payments
 
 ```typescript
-// Create a payment
+// Create a payment with existing customer and payment method IDs
 const payment = await upag.payments.create({
-  customerId: 'cus_123',
+  customer: 'cus_123',
+  paymentMethod: 'pm_456',
   amount: 10000, // Amount in cents (R$ 100.00)
   currency: 'brl',
-  paymentMethodId: 'pm_123',
+  installments: 1
 });
 
 // Retrieve a payment
@@ -106,7 +113,52 @@ const payment = await upag.payments.retrieve('pay_123');
 const payments = await upag.payments.list({
   limit: 10,
   page: 1,
+  customer: 'cus_123' // optional filter
 });
+```
+
+### Inline Creation (Find or Create Pattern)
+
+The payments API supports creating customers and payment methods inline, improving developer experience by reducing the number of API calls needed.
+
+```typescript
+// Create payment with inline customer and payment method
+const payment = await upag.payments.create({
+  customer: {
+    email: 'john@example.com',
+    name: 'John Doe',
+    phone: '+5511999999999',
+    taxId: '12345678900'
+  },
+  paymentMethod: {
+    type: 'credit_card',
+    card: {
+      number: '4111111111111111',
+      expiryMonth: '12',
+      expiryYear: '2030',
+      cvv: '123',
+      holderName: 'John Doe'
+    }
+  },
+  amount: 5000,
+  currency: 'brl',
+  installments: 3
+});
+
+// Mix existing ID with inline creation
+const payment = await upag.payments.create({
+  customer: 'cus_123', // existing customer
+  paymentMethod: {
+    type: 'pix',
+    pix: { expiresIn: 1800 } // 30 minutes
+  },
+  amount: 2500,
+  currency: 'brl'
+});
+
+// The response includes the created customer and payment method
+console.log(payment.customer.id);       // New customer ID
+console.log(payment.paymentMethod.id);  // New payment method ID
 ```
 
 ## TypeScript Support
@@ -120,8 +172,20 @@ import {
   Payment,
   PaymentMethod,
   CreateCustomerParams,
-  CreatePaymentParams
+  CreatePaymentParams,
+  CreatePaymentMethodParams,
+  CustomerInput,
+  PaymentMethodInput,
+  Currency
 } from 'upag';
+
+// Type-safe payment creation with union types
+const params: CreatePaymentParams = {
+  customer: { email: 'test@example.com', name: 'Test' }, // or string ID
+  paymentMethod: { type: 'pix', pix: { expiresIn: 600 } }, // or string ID
+  amount: 1000,
+  currency: 'brl'
+};
 ```
 
 ## Error Handling
@@ -194,4 +258,3 @@ MIT
 ## Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request.
-
