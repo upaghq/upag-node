@@ -154,9 +154,8 @@ export interface ListPaymentsParams extends ListParams {
 
 // Error types
 export interface UpagError {
-  type: string;
   message: string;
-  code?: string;
+  code: string;
   statusCode?: number;
-  details?: any;
+  errors?: Record<string, any> | null;
 }

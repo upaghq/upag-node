@@ -51,23 +51,23 @@ export class HttpClient {
       // Server responded with error
       const data: any = error.response.data;
       return {
-        type: data?.type || 'api_error',
         message: data?.message || error.message,
         code: data?.code,
         statusCode: error.response.status,
-        details: data?.details,
+        errors: data?.errors,
       };
     } else if (error.request) {
       // Request made but no response
       return {
-        type: 'network_error',
         message: 'No response received from server',
+        code: 'NETWORK_ERROR',
         statusCode: 0,
       };
     } else {
       // Error setting up request
       return {
-        type: 'client_error',
+        code: 'CLIENT_ERROR',
+        statusCode: 0,
         message: error.message,
       };
     }
