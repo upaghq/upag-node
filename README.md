@@ -159,6 +159,11 @@ const payment = await upag.payments.create({
 // The response includes the created customer and payment method
 console.log(payment.customer.id);       // New customer ID
 console.log(payment.paymentMethod.id);  // New payment method ID
+
+// For PIX payments, the QR code is returned
+if (payment.pixQrCode) {
+  console.log(payment.pixQrCode);       // Base64 QR code image or PIX copy-paste code
+}
 ```
 
 ## TypeScript Support

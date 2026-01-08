@@ -112,10 +112,10 @@ export interface PaymentMethod {
 
 // Payment types
 export type PaymentStatus = 'incomplete' | 'pending' | 'approved' | 'refused' | 'failed' | 'refunded';
+export type PaymentRefuseReason = 'insufficient_funds' | 'invalid_card' | 'expired_card' | 'fraud' | 'other';
 
 export interface Payment {
   id: string;
-  accountId: string;
   customer: Customer;
   paymentMethod: PaymentMethod;
   amount: number;
@@ -126,9 +126,9 @@ export interface Payment {
   net: number;
   interest: number;
   installments: number;
+  pixQrCode?: string | null;
+  refuseReason?: PaymentRefuseReason | null;
   dueAt?: Date | null;
-  paidAt?: Date | null;
-  metadata?: Record<string, any> | null;
   livemode: boolean;
   createdAt: Date;
   updatedAt: Date;
