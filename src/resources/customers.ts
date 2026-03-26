@@ -3,8 +3,8 @@ import {
   Customer,
   CreateCustomerParams,
   UpdateCustomerParams,
+  ListCustomersParams,
   ListResponse,
-  ListParams,
 } from '../types';
 
 export class Customers extends BaseResource {
@@ -51,10 +51,10 @@ export class Customers extends BaseResource {
 
   /**
    * List all customers
-   * @param params - List parameters (limit, offset)
+   * @param params - Filtering and pagination parameters
    * @returns List of customers
    */
-  async list(params?: ListParams): Promise<ListResponse<Customer>> {
+  async list(params?: ListCustomersParams): Promise<ListResponse<Customer>> {
     const query = this.buildQueryString(params);
     return this.http.get<ListResponse<Customer>>(`${this.basePath}${query}`);
   }

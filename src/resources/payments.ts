@@ -2,8 +2,10 @@ import { BaseResource } from './base-resource';
 import {
   Payment,
   CreatePaymentParams,
-  ListResponse,
   ListPaymentsParams,
+  RefundPaymentParams,
+  Refund,
+  ListResponse,
 } from '../types';
 
 export class Payments extends BaseResource {
@@ -13,31 +15,10 @@ export class Payments extends BaseResource {
 
   /**
    * Create a new payment
-   * 
+   *
    * Supports find-or-create pattern for customer and paymentMethod:
-   * - Pass a string UUID to use an existing customer/paymentMethod
+   * - Pass a string ID to use an existing customer/paymentMethod
    * - Pass an object to create a new customer/paymentMethod inline
-   * 
-   * @example
-   * // With existing customer and payment method IDs
-   * await upag.payments.create({
-   *   customer: 'cus_123',
-   *   paymentMethod: 'pm_456',
-   *   amount: 1000,
-   *   currency: 'brl'
-   * });
-   * 
-   * @example
-   * // With inline customer and payment method creation
-   * await upag.payments.create({
-   *   customer: { email: 'john@example.com', name: 'John Doe' },
-   *   paymentMethod: { type: 'credit_card', card: { number: '4111...', ... } },
-   *   amount: 1000,
-   *   currency: 'brl'
-   * });
-   * 
-   * @param params - Payment creation parameters
-   * @returns The created payment with customer and paymentMethod details
    */
   async create(params: CreatePaymentParams): Promise<Payment> {
     return this.http.post<Payment>(this.basePath, params);
@@ -54,11 +35,39 @@ export class Payments extends BaseResource {
 
   /**
    * List all payments
-   * @param params - List parameters (limit, page, customer)
+   * @param params - Filtering and pagination parameters
    * @returns List of payments
    */
   async list(params?: ListPaymentsParams): Promise<ListResponse<Payment>> {
     const query = this.buildQueryString(params);
     return this.http.get<ListResponse<Payment>>(`${this.basePath}${query}`);
+  }
+
+  /**
+   * Refund a payment
+   * @param id - Payment ID
+   * @param params - Refund parameters (amount, reason)
+   * @returns The created refund
+   */
+  async refund(id: string, params: RefundPaymentParams): Promise<Refund> {
+    return this.http.post<Refund>(`${this.basePath}/${id}/refund`, params);
+  }
+
+  /**
+   * Capture a previously authorized payment
+   * @param id - Payment ID
+   * @returns The captured payment
+   */
+  async capture(id: string): Promise<Payment> {
+    return this.http.post<Payment>(`${this.basePath}/${id}/capture`);
+  }
+
+  /**
+   * Cancel a payment
+   * @param id - Payment ID
+   * @returns The canceled payment
+   */
+  async cancel(id: string): Promise<Payment> {
+    return this.http.post<Payment>(`${this.basePath}/${id}/cancel`);
   }
 }
