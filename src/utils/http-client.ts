@@ -5,7 +5,7 @@ export class HttpClient {
   private client: AxiosInstance;
 
   constructor(config: UpagConfig) {
-    const baseURL = 'https://api.upag.io/v1';
+    const baseURL = 'https://api.billing.upag.io/v1';
     
     this.client = axios.create({
       baseURL,
