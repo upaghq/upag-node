@@ -1,52 +1,51 @@
 import { BaseResource } from './base-resource';
+import { HttpClient } from '../utils/http-client';
 import {
   CheckoutSession,
   CreateCheckoutSessionParams,
   UpdateCheckoutSessionParams,
   ListCheckoutSessionsParams,
+  ConfirmCheckoutSessionParams,
+  ApplyCouponParams,
   ListResponse,
 } from '../types';
 
 export class CheckoutSessions extends BaseResource {
-  constructor(http: any) {
-    super(http, '/checkout-sessions');
+  constructor(http: HttpClient) {
+    super(http, '/checkout/sessions');
   }
 
-  /**
-   * Create a new checkout session
-   * @param params - Checkout session creation parameters
-   * @returns The created checkout session
-   */
   async create(params: CreateCheckoutSessionParams): Promise<CheckoutSession> {
     return this.http.post<CheckoutSession>(this.basePath, params);
   }
 
-  /**
-   * Retrieve a checkout session by ID
-   * @param id - Checkout session ID
-   * @returns The checkout session
-   */
   async retrieve(id: string): Promise<CheckoutSession> {
     return this.http.get<CheckoutSession>(this.buildUrl(id));
   }
 
-  /**
-   * Update a checkout session
-   * @param id - Checkout session ID
-   * @param params - Update parameters
-   * @returns The updated checkout session
-   */
   async update(id: string, params: UpdateCheckoutSessionParams): Promise<CheckoutSession> {
-    return this.http.put<CheckoutSession>(this.buildUrl(id), params);
+    return this.http.patch<CheckoutSession>(this.buildUrl(id), params);
   }
 
-  /**
-   * List all checkout sessions
-   * @param params - Pagination parameters
-   * @returns List of checkout sessions
-   */
+  async delete(id: string): Promise<void> {
+    await this.http.delete<void>(this.buildUrl(id));
+  }
+
   async list(params?: ListCheckoutSessionsParams): Promise<ListResponse<CheckoutSession>> {
-    const query = this.buildQueryString(params);
-    return this.http.get<ListResponse<CheckoutSession>>(`${this.basePath}${query}`);
+    return this.http.get<ListResponse<CheckoutSession>>(
+      `${this.basePath}${this.buildQueryString(params)}`
+    );
+  }
+
+  async confirm(id: string, params: ConfirmCheckoutSessionParams): Promise<CheckoutSession> {
+    return this.http.post<CheckoutSession>(`${this.basePath}/${id}/confirm`, params);
+  }
+
+  async applyCoupon(id: string, params: ApplyCouponParams): Promise<CheckoutSession> {
+    return this.http.post<CheckoutSession>(`${this.basePath}/${id}/coupon`, params);
+  }
+
+  async removeCoupon(id: string): Promise<CheckoutSession> {
+    return this.http.delete<CheckoutSession>(`${this.basePath}/${id}/coupon`);
   }
 }

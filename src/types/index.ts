@@ -1,234 +1,324 @@
-// Configuration
 export interface UpagConfig {
   apiKey: string;
   timeout?: number;
+  /** Overrides the host inferred from the key (`sk_test_` → sandbox). */
+  baseURL?: string;
 }
 
-// Common types
 export interface ListResponse<T> {
   data: T[];
-  hasMore: boolean;
-  total?: number;
+  count: number;
 }
 
 export interface ListParams {
-  limit?: number;
   page?: number;
+  limit?: number;
 }
 
-// Currency type
-export type Currency = 'brl' | 'usd';
+export interface IdempotentRequestOptions {
+  /** Sent as the `Idempotency-Key` header (max 255 characters). */
+  idempotencyKey?: string;
+}
 
-// Enums
+export type Currency = 'brl' | 'usd';
 export type BillingType = 'one_time' | 'recurring';
 export type RecurringInterval = 'day' | 'week' | 'month' | 'year';
-export type Source = 'checkout' | 'api' | 'dashboard';
-export type BillingAddressCollection = 'auto' | 'required';
-export type SubscriptionStatus = 'active' | 'past_due' | 'canceled' | 'trialing' | 'paused' | 'incomplete';
-export type InvoiceStatus = 'draft' | 'open' | 'paid' | 'void' | 'uncollectible';
-export type CancellationReason = 'too_expensive' | 'missing_features' | 'switched_service' | 'unused' | 'customer_service' | 'too_complex' | 'low_quality' | 'other';
-export type RefundReason = 'duplicate' | 'fraudulent' | 'requested_by_customer' | 'other';
+export type PaymentMethodType = 'pix' | 'card';
+export type BillingAddressCollection = 'auto' | 'required' | 'none';
 export type ApplyAt = 'now' | 'period_end';
 
-// ─── Customer ────────────────────────────────────────────────────────
+export type DocumentType = 'cpf' | 'cnpj';
+
+export interface Phone {
+  countryCode: string;
+  areaCode: string;
+  number: string;
+}
+
+export interface Address {
+  street?: string | null;
+  number?: string | null;
+  complement?: string | null;
+  neighborhood?: string | null;
+  city?: string | null;
+  state?: string | null;
+  country?: string | null;
+  zip?: string | null;
+}
+
+export interface CustomerInput {
+  name: string;
+  document: { type: DocumentType; number: string };
+  email?: string | null;
+  phone?: Phone | null;
+  address?: Address | null;
+}
 
 export interface Customer {
   id: string;
-  accountId: string;
-  email: string;
   name: string;
-  phone?: string | null;
-  taxId?: string | null;
-  notificationPreference?: string[] | null;
-  line1?: string | null;
-  line2?: string | null;
-  city?: string | null;
-  state?: string | null;
-  country?: string | null;
-  zipCode?: string | null;
-  metadata?: Record<string, any> | null;
-  livemode: boolean;
-  createdAt: Date;
-  updatedAt: Date;
-  deletedAt?: Date | null;
+  email: string | null;
+  document: { type: DocumentType; number: string };
+  phone: Phone | null;
+  address: Address;
+  createdAt: string;
+  updatedAt: string;
 }
 
-export interface CreateCustomerParams {
-  email: string;
-  name: string;
-  phone?: string;
-  taxId?: string;
-  notificationPreference?: string[];
-  line1?: string | null;
-  line2?: string | null;
-  city?: string | null;
-  state?: string | null;
-  country?: string | null;
-  zipCode?: string | null;
+export type CreateCustomerParams = CustomerInput;
+export type UpdateCustomerParams = Partial<Omit<CustomerInput, 'document'>>;
+export type ListCustomersParams = ListParams;
+
+export type CardBrand =
+  | 'visa'
+  | 'mastercard'
+  | 'elo'
+  | 'amex'
+  | 'hipercard'
+  | 'diners'
+  | 'discover'
+  | 'jcb'
+  | 'aura'
+  | 'unknown';
+export type CardFunding = 'credit' | 'debit' | 'prepaid' | 'unknown';
+export type CardWallet = 'apple_pay' | 'google_pay';
+export type CardStatus = 'active' | 'invalid' | 'removed';
+
+export interface Card {
+  id: string;
+  customerId: string | null;
+  brand: CardBrand;
+  firstDigits: string;
+  lastDigits: string;
+  holderName: string;
+  expirationMonth: number;
+  expirationYear: number;
+  funding: CardFunding | null;
+  wallet: CardWallet | null;
+  status: CardStatus;
+  createdAt: string;
+  updatedAt: string;
 }
 
-export interface UpdateCustomerParams {
-  email?: string | null;
-  name?: string | null;
-  phone?: string | null;
-  taxId?: string | null;
-  notificationPreference?: string[];
-  line1?: string | null;
-  line2?: string | null;
-  city?: string | null;
-  state?: string | null;
-  country?: string | null;
-  zipCode?: string | null;
-}
-
-export interface ListCustomersParams extends ListParams {
-  id?: string;
-  email?: string;
-  phone?: string;
-}
-
-// ─── Payment Method ──────────────────────────────────────────────────
-
-export type PaymentMethodType = 'credit_card' | 'pix';
-
-export interface CardParams {
+export interface CreateCardParams {
+  /** Card number, 13 to 19 digits, no spaces or dashes. */
   number: string;
-  expiryMonth: string;
-  expiryYear: string;
+  /** 1 to 12. */
+  expirationMonth: number;
+  /** Four-digit year. */
+  expirationYear: number;
+  /** Security code, 3 or 4 digits. */
   cvv: string;
+  /** Letters and spaces only, 2 to 64 characters (no accents or punctuation). */
   holderName: string;
 }
 
-export interface PixParams {
-  expiresIn?: number | null;
-}
-
-export interface CreateCreditCardPaymentMethodParams {
-  type: 'credit_card';
-  card: CardParams;
-}
-
-export interface CreatePixPaymentMethodParams {
-  type: 'pix';
-  pix?: PixParams;
-}
-
-export type CreatePaymentMethodParams = CreateCreditCardPaymentMethodParams | CreatePixPaymentMethodParams;
-
-export interface PaymentMethod {
-  id: string;
-  customerId: string;
-  type: PaymentMethodType;
-  brand?: string | null;
-  firstDigits?: string | null;
-  lastDigits?: string | null;
-  expiryMonth?: number | null;
-  expiryYear?: number | null;
-  holderName?: string | null;
-  metadata?: Record<string, any> | null;
-  livemode: boolean;
-  createdAt: Date;
-  updatedAt: Date;
-  deletedAt?: Date | null;
-}
-
-// ─── Payment ─────────────────────────────────────────────────────────
-
-export type PaymentStatus = 'incomplete' | 'pending' | 'approved' | 'refused' | 'failed' | 'refunded';
-export type PaymentRefuseReason = 'insufficient_funds' | 'invalid_card' | 'expired_card' | 'fraud' | 'other';
-
-export interface Payment {
-  id: string;
-  customer: Customer;
-  paymentMethod: PaymentMethod;
-  amount: number;
-  currency: Currency;
-  status: PaymentStatus;
-  gross: number;
-  mdr: number;
-  net: number;
-  interest: number;
-  installments: number;
-  description?: string | null;
-  pixQrCode?: string | null;
-  refuseReason?: PaymentRefuseReason | null;
-  dueAt?: Date | null;
-  livemode: boolean;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
-export type CustomerInput = string | CreateCustomerParams;
-export type PaymentMethodInput = string | CreatePaymentMethodParams;
-
-export interface PaymentSplitParams {
-  account: string;
-  amount: number;
-  liable?: boolean;
-}
-
-export interface CreatePaymentParams {
-  customer: CustomerInput;
-  paymentMethod: PaymentMethodInput;
-  amount: number;
-  currency: Currency;
-  installments?: number | null;
-  capture?: boolean;
-  description?: string | null;
-  splits?: PaymentSplitParams[];
-}
-
-export interface ListPaymentsParams extends ListParams {
+export interface ListCardsParams extends ListParams {
   customer?: string;
-  id?: string;
-  status?: PaymentStatus;
-  paymentMethodType?: PaymentMethodType;
 }
 
-export interface RefundPaymentParams {
-  amount: number;
-  reason?: RefundReason;
-}
+export type ThreeDSecureSessionStatus =
+  | 'requires_action'
+  | 'completed'
+  | 'failed'
+  | 'canceled'
+  | 'expired';
 
-export interface Refund {
+export interface ThreeDSecureSession {
   id: string;
-  paymentId: string;
-  amount: number;
-  reason?: RefundReason | null;
-  livemode: boolean;
-  createdAt: Date;
-  updatedAt: Date;
+  status: ThreeDSecureSessionStatus;
+  /** What the card will be charged, in cents. Fixed when the session is created. */
+  finalAmount: number;
+  cardId: string;
+  expiresAt: string;
 }
 
-// ─── Product ─────────────────────────────────────────────────────────
+export interface CreatedThreeDSecureSession extends ThreeDSecureSession {
+  /**
+   * Hand this to your checkout page and to nobody else; the browser SDK needs it to
+   * run the authentication. It is shown only here and never returned again.
+   */
+  clientSecret: string;
+}
+
+export interface CreateThreeDSecureSessionParams {
+  /** List price in cents. Send exactly what the charge will carry. */
+  amount: number;
+  /** 1 to 12. Defaults to 1. */
+  installments?: number;
+  /** UUID of a tokenized card of your account. */
+  card: string;
+  /** A customer UUID, or an inline customer used for this authentication only. */
+  customer: string | CustomerInput;
+  /** Name shown on the bank's challenge screen. */
+  softDescriptor?: string;
+  /** Sandbox only: always show the bank challenge. */
+  forceChallenge?: boolean;
+}
+
+export type ChargeType = 'pix' | 'card';
+export type ChargeStatus =
+  | 'pending'
+  | 'paid'
+  | 'expired'
+  | 'failed'
+  | 'in_review'
+  | 'refunded'
+  | 'partially_refunded'
+  | 'chargeback';
+export type ChargeItemKind = 'physical' | 'digital' | 'shipping' | 'other';
+
+export interface ChargeItemParams {
+  externalId?: string;
+  kind?: ChargeItemKind;
+  sku?: string;
+  name: string;
+  url?: string;
+  quantity: number;
+  /** In cents. */
+  unitAmount: number;
+}
+
+export interface ChargeItem {
+  id: string;
+  externalId: string | null;
+  kind: ChargeItemKind;
+  sku: string | null;
+  name: string;
+  url: string | null;
+  quantity: number;
+  unitAmount: number;
+  amount: number;
+  createdAt: string;
+}
+
+export interface ChargeSplitParams {
+  accountId: string;
+  /** In cents, greater than zero. */
+  amount: number;
+}
+
+export interface ChargeSplit {
+  id: string;
+  type: 'mdr' | 'account';
+  status: 'pending' | 'processing' | 'paid' | 'failed';
+  amount: number;
+  account?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ChargeLocation {
+  city?: string | null;
+  /** Two-letter code. */
+  state?: string | null;
+  /** Two-letter code. */
+  country?: string | null;
+  zip?: string | null;
+}
+
+interface BaseCreateChargeParams {
+  /** In cents, greater than zero. */
+  amount: number;
+  /** Free-text note, 1 to 140 characters. */
+  description?: string;
+  /** Up to 50 string key-value pairs, returned as sent. */
+  meta?: Record<string, string>;
+  /** Up to 100 informational items. */
+  items?: ChargeItemParams[];
+  splits?: ChargeSplitParams[];
+}
+
+export interface CreatePixChargeParams extends BaseCreateChargeParams {
+  type: 'pix';
+  pix?: {
+    method: 'dynamic' | 'static';
+    /** ISO 8601 expiry of a dynamic charge. Not accepted for static. */
+    dueDate?: string;
+  };
+  /** A customer UUID, or an inline customer. Required for dynamic Pix. */
+  customer?: string | CustomerInput;
+}
+
+export interface CreateCardChargeParams extends BaseCreateChargeParams {
+  type: 'card';
+  /** UUID of a tokenized card. With a 3D Secure session, it must be the session's card. */
+  card: string;
+  /** Required on card charges. */
+  customer: string | (CustomerInput & { ipAddress?: string });
+  /** 1 to 12. Defaults to 1. With a 3D Secure session it must match the session. */
+  installments?: number;
+  /** Shown on the payer's statement, up to 13 characters. */
+  softDescriptor?: string;
+  /** Where the payer appears to be. Never stored on the customer. */
+  location?: ChargeLocation;
+  /** A completed 3D Secure session for this card, amount and installments. */
+  threeDSecureSessionId?: string;
+  /** Public IPv4 or IPv6 of the payer. */
+  ipAddress?: string;
+}
+
+export type CreateChargeParams = CreatePixChargeParams | CreateCardChargeParams;
+
+export interface Charge {
+  id: string;
+  type: ChargeType;
+  status: ChargeStatus;
+  amount: number;
+  description: string | null;
+  meta: Record<string, string> | null;
+  /** The customer id, the expanded customer when `includes=customer`, or `null`. */
+  customer: string | Customer | null;
+  items?: ChargeItem[];
+  pix?: {
+    reference: string | null;
+    qrCode: string | null;
+    expiresAt: string | null;
+  };
+  card?: {
+    id: string;
+    installments: number;
+    nsu: string | null;
+    authorizationCode: string | null;
+    acquirerStatusCode: string | null;
+  };
+  splits: ChargeSplit[];
+  ipAddress: string | null;
+  paidAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ListChargesParams extends ListParams {
+  /** `items`, `customer`, or both, comma separated. */
+  includes?: string;
+}
 
 export interface Product {
   id: string;
-  accountId: string;
   name: string;
   description: string;
-  image?: string | null;
-  prices?: Price[];
-  livemode: boolean;
-  createdAt: Date;
-  updatedAt: Date;
-  deletedAt?: Date | null;
+  image: string | null;
+  createdAt: string;
+  updatedAt: string;
 }
 
-export interface DefaultPriceParams {
+export interface CreatePriceFields {
   name: string;
+  /** In cents, min 100. */
   amount: number;
   currency: Currency;
   billingType: BillingType;
   interval?: RecurringInterval | null;
   intervalCount?: number | null;
+  metadata?: Record<string, string | boolean>;
 }
 
 export interface CreateProductParams {
   name: string;
   description: string;
   image?: string;
-  defaultPrice?: DefaultPriceParams;
+  defaultPrice?: CreatePriceFields;
 }
 
 export interface UpdateProductParams {
@@ -239,144 +329,231 @@ export interface UpdateProductParams {
 
 export type ListProductsParams = ListParams;
 
-// ─── Price ───────────────────────────────────────────────────────────
-
 export interface Price {
   id: string;
-  productId: string;
-  accountId: string;
   name: string;
-  amount: number;
-  currency: Currency;
   billingType: BillingType;
-  interval?: RecurringInterval | null;
-  intervalCount?: number | null;
-  sources?: Source[] | null;
-  livemode: boolean;
-  createdAt: Date;
-  updatedAt: Date;
-  deletedAt?: Date | null;
+  interval: RecurringInterval | null;
+  intervalCount: number | null;
+  currency: Currency;
+  amount: number;
+  metadata: Record<string, string | boolean>;
+  createdAt: string;
+  updatedAt: string;
 }
 
-export interface CreatePriceParams {
-  name: string;
-  amount: number;
-  currency: Currency;
-  billingType: BillingType;
-  interval?: RecurringInterval | null;
-  intervalCount?: number | null;
-}
+export type CreatePriceParams = CreatePriceFields;
 
 export interface UpdatePriceParams {
   name?: string;
   amount?: number;
   intervalCount?: number;
-  sources?: Source[];
+  metadata?: Record<string, string | boolean>;
 }
 
 export type ListPricesParams = ListParams;
 
-// ─── Checkout Session ────────────────────────────────────────────────
+export type InvoiceStatus = 'draft' | 'open' | 'paid' | 'void' | 'uncollectible';
 
-export interface CheckoutSessionItem {
-  priceId: string;
+export interface PayPixParams {
+  method: 'pix';
+  dueDate?: string;
+}
+
+export interface PayCardParams {
+  method: 'card';
+  card: string;
+  installments?: number;
+  threeDSecureSessionId?: string;
+  ipAddress?: string;
+  location?: ChargeLocation;
+  softDescriptor?: string;
+}
+
+export type PayInvoiceParams = PayPixParams | PayCardParams;
+
+export interface InvoiceItemParams {
+  price: string;
   quantity: number;
 }
 
-export interface CheckoutSession {
+export interface InvoiceItem {
   id: string;
-  accountId: string;
-  customerId?: string | null;
-  items: CheckoutSessionItem[];
-  paymentMethods?: PaymentMethodType[];
-  billingAddressCollection?: BillingAddressCollection;
-  successUrl?: string | null;
-  cancelUrl?: string | null;
-  url?: string | null;
-  status: string;
-  livemode: boolean;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
-export interface CreateCheckoutSessionParams {
-  items: CheckoutSessionItem[];
-  customerId?: string | null;
-  paymentMethods?: PaymentMethodType[];
-  billingAddressCollection?: BillingAddressCollection;
-  successUrl?: string | null;
-  cancelUrl?: string | null;
-}
-
-export interface UpdateCheckoutSessionParams {
-  customerId?: string | null;
-  items?: CheckoutSessionItem[];
-  paymentMethods?: PaymentMethodType[];
-  successUrl?: string | null;
-  cancelUrl?: string | null;
-}
-
-export type ListCheckoutSessionsParams = ListParams;
-
-// ─── Subscription ────────────────────────────────────────────────────
-
-export interface SubscriptionItemParams {
+  product: string;
   price: string;
+  name: string;
+  amount: number;
+  quantity: number;
+  totalAmount: number;
+}
+
+export interface InvoiceDiscount {
+  id: string;
+  item: string | null;
+  coupon: string;
+  type: 'coupon';
+  amount: number;
+}
+
+export interface InvoicePayment {
+  charge: string;
+  type: string;
+  status: string;
+  settledAt: string | null;
+  createdAt: string;
+}
+
+export interface Invoice {
+  id: string;
+  customer: string;
+  paymentMethod: string | null;
+  subscription: string | null;
+  status: InvoiceStatus;
+  currency: Currency;
+  description: string | null;
+  amountDue: number;
+  amountPaid: number;
+  attemptCount: number;
+  dueDate: string | null;
+  paidAt: string | null;
+  items: InvoiceItem[];
+  discounts: InvoiceDiscount[];
+  payments: InvoicePayment[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateInvoiceParams {
+  customer: string;
+  description?: string | null;
+  dueDate?: string | null;
+  items: InvoiceItemParams[];
+  open?: boolean;
+}
+
+export interface UpdateInvoiceParams {
+  open?: boolean;
+}
+
+export interface ListInvoicesParams extends ListParams {
+  id?: string;
+  status?: InvoiceStatus;
+  customer?: string;
+}
+
+export interface UpcomingInvoiceParams {
+  subscription: string;
+}
+
+export interface CreateInvoiceItemParams {
+  price: string;
+  quantity: number;
+}
+
+export interface UpdateInvoiceItemParams {
+  price?: string;
   quantity?: number;
+}
+
+export interface UpcomingInvoiceItem {
+  product: string;
+  price: string;
+  name: string;
+  amount: number;
+  quantity: number;
+  totalAmount: number;
+}
+
+export interface UpcomingInvoice {
+  subscription: string;
+  customer: string;
+  currency: Currency;
+  periodStart: string;
+  periodEnd: string;
+  amountDue: number;
+  items: UpcomingInvoiceItem[];
+}
+
+export type SubscriptionStatus =
+  | 'active'
+  | 'canceled'
+  | 'past_due'
+  | 'trialing'
+  | 'incomplete'
+  | 'paused'
+  | 'void';
+export type SubscriptionPaymentMethod = 'pix' | 'card';
+export type CancellationReason =
+  | 'low_quality'
+  | 'missing_features'
+  | 'other'
+  | 'switched_service'
+  | 'too_complex'
+  | 'too_expensive'
+  | 'unused';
+export type ScheduledChangeOperation = 'add' | 'update' | 'remove';
+
+export interface SubscriptionItem {
+  id: string;
+  product: string;
+  price: string;
+  name: string;
+  amount: number;
+  quantity: number;
+  totalAmount: number;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface Subscription {
   id: string;
-  accountId: string;
-  customerId: string;
-  paymentMethodId: string;
+  customer: string;
+  paymentMethod: SubscriptionPaymentMethod | null;
+  card: string | null;
   status: SubscriptionStatus;
-  currentPeriodStart: Date;
-  currentPeriodEnd: Date;
+  currency: Currency;
+  interval: RecurringInterval;
+  intervalCount: number;
   cancelAtPeriodEnd: boolean;
-  canceledAt?: Date | null;
-  cancellationReason?: CancellationReason | null;
-  trialStart?: Date | null;
-  trialEnd?: Date | null;
+  startDate: string | null;
+  endDate: string | null;
+  trialStartDate: string | null;
+  trialEndDate: string | null;
+  currentPeriodStart: string | null;
+  currentPeriodEnd: string | null;
+  canceledAt: string | null;
+  cancellationReason: CancellationReason | null;
   items: SubscriptionItem[];
-  livemode: boolean;
-  createdAt: Date;
-  updatedAt: Date;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface CreateSubscriptionParams {
   customer: string;
-  paymentMethod: string;
-  items: SubscriptionItemParams[];
-  trialEnd?: number;
+  /** Required unless `trialEnd` is set. */
+  paymentMethod?: SubscriptionPaymentMethod;
+  /** Required when `paymentMethod` is `card`. */
+  card?: string;
+  trialEnd?: string;
+  items: { price: string; quantity?: number }[];
 }
 
 export interface UpdateSubscriptionParams {
-  paymentMethod?: string;
+  paymentMethod?: SubscriptionPaymentMethod;
+  card?: string;
   cancelAtPeriodEnd?: boolean;
 }
 
 export interface CancelSubscriptionParams {
-  cancelAtPeriodEnd?: boolean;
-  cancellationReason?: CancellationReason;
+  atPeriodEnd?: boolean;
+  reason?: CancellationReason;
 }
 
 export interface ListSubscriptionsParams extends ListParams {
-  customer?: string;
   id?: string;
   status?: SubscriptionStatus;
+  customer?: string;
   cancelAtPeriodEnd?: boolean;
-}
-
-// Subscription items
-export interface SubscriptionItem {
-  id: string;
-  subscriptionId: string;
-  priceId: string;
-  quantity: number;
-  price?: Price;
-  createdAt: Date;
-  updatedAt: Date;
 }
 
 export interface CreateSubscriptionItemParams {
@@ -397,94 +574,443 @@ export interface DeleteSubscriptionItemParams {
 
 export interface SubscriptionScheduledChange {
   id: string;
-  subscriptionId: string;
-  action: string;
-  data: Record<string, any>;
-  effectiveAt: Date;
-  createdAt: Date;
+  subscription: string;
+  operation: ScheduledChangeOperation;
+  item: string | null;
+  price: string | null;
+  quantity: number | null;
+  createdAt: string;
 }
 
-// ─── Invoice ─────────────────────────────────────────────────────────
+export type CheckoutSessionStatus = 'open' | 'complete' | 'expired';
 
-export interface InvoiceItemParams {
-  priceId: string;
+export interface CheckoutSessionItem {
+  id: string;
+  price: string;
   quantity: number;
 }
 
-export interface Invoice {
+export interface CheckoutSessionBump {
   id: string;
-  accountId: string;
-  customerId: string;
-  paymentMethodId?: string | null;
-  subscriptionId?: string | null;
-  status: InvoiceStatus;
-  total: number;
-  subtotal: number;
-  currency: Currency;
-  items: InvoiceItem[];
-  dueAt?: Date | null;
-  paidAt?: Date | null;
-  livemode: boolean;
-  createdAt: Date;
-  updatedAt: Date;
+  price: string;
+  quantity: number;
+  amount: number;
+  title: string | null;
+  description: string | null;
 }
 
-export interface CreateInvoiceParams {
-  customerId: string;
-  paymentMethodId: string;
-  items: InvoiceItemParams[];
+export interface CheckoutSessionDiscount {
+  id: string;
+  item: string;
+  coupon: string;
+  type: 'coupon';
+  amount: number;
 }
 
-export interface ListInvoicesParams extends ListParams {
+export interface CheckoutSession {
+  id: string;
+  customer: string | null;
+  checkoutLayout: string | null;
+  paymentLink: string | null;
+  paymentMethods: PaymentMethodType[];
+  status: CheckoutSessionStatus;
+  url: string;
+  expiresAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+  billingAddressCollection: BillingAddressCollection;
+  successUrl: string | null;
+  cancelUrl: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  country: string | null;
+  region: string | null;
+  city: string | null;
+  invoice: string | null;
+  couponEnabled: boolean;
+  couponCode: string | null;
+  items: CheckoutSessionItem[];
+  bumps: CheckoutSessionBump[];
+  discounts: CheckoutSessionDiscount[];
+}
+
+export interface CreateCheckoutSessionParams {
+  customer?: string | null;
+  items: { price: string; quantity: number }[];
+  bumps?: {
+    price: string;
+    quantity?: number;
+    title?: string | null;
+    description?: string | null;
+  }[];
+  paymentMethods?: PaymentMethodType[];
+  successUrl?: string | null;
+  cancelUrl?: string | null;
+  billingAddressCollection?: BillingAddressCollection;
+  couponEnabled?: boolean;
+  expiresAt?: string | null;
+}
+
+export interface UpdateCheckoutSessionParams {
+  customer?: string | null;
+  paymentMethods?: PaymentMethodType[];
+  successUrl?: string | null;
+  cancelUrl?: string | null;
+}
+
+export interface ListCheckoutSessionsParams extends ListParams {
   id?: string;
-  status?: InvoiceStatus;
+  status?: CheckoutSessionStatus;
   customer?: string;
 }
 
-export interface UpcomingInvoiceParams {
-  subscription: string;
+export interface ConfirmCheckoutSessionParams {
+  customer: string | CustomerInput;
+  bumps?: string[];
+  payment: PayInvoiceParams;
 }
 
-// Invoice items
-export interface InvoiceItem {
+export interface ApplyCouponParams {
+  code: string;
+}
+
+export interface CheckoutLayoutTheme {
+  radius: string;
+  font?: string;
+  background: string;
+  foreground: string;
+  card: string;
+  'card-foreground': string;
+  popover: string;
+  'popover-foreground': string;
+  primary: string;
+  'primary-foreground': string;
+  secondary: string;
+  'secondary-foreground': string;
+  muted: string;
+  'muted-foreground': string;
+  accent: string;
+  'accent-foreground': string;
+  destructive: string;
+  'destructive-foreground': string;
+  success: string;
+  'success-foreground': string;
+  warning: string;
+  'warning-foreground': string;
+  border: string;
+  input: string;
+  ring: string;
+}
+
+export interface CheckoutLayout {
   id: string;
-  invoiceId: string;
+  name: string;
+  theme: CheckoutLayoutTheme | null;
+  favicon: string | null;
+  desktop: Record<string, unknown> | null;
+  mobile: Record<string, unknown> | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateCheckoutLayoutParams {
+  name: string;
+  theme?: CheckoutLayoutTheme;
+  favicon?: string | null;
+  desktop?: Record<string, unknown> | null;
+  mobile?: Record<string, unknown> | null;
+}
+
+export type UpdateCheckoutLayoutParams = Partial<CreateCheckoutLayoutParams>;
+export type ListCheckoutLayoutsParams = ListParams;
+
+export interface PaymentLinkItem {
+  id: string;
+  productId: string;
   priceId: string;
   quantity: number;
   amount: number;
-  price?: Price;
-  product?: Product;
-  createdAt: Date;
-  updatedAt: Date;
 }
 
-export interface CreateInvoiceItemParams {
+export interface PaymentLinkBump {
+  id: string;
+  productId: string;
+  priceId: string;
+  quantity: number;
+  amount: number;
+  title: string | null;
+  description: string | null;
+}
+
+export interface PaymentLink {
+  id: string;
+  name: string;
+  description: string | null;
+  checkoutLayoutId: string | null;
+  active: boolean;
+  amount: number;
+  url: string;
+  paymentMethods: PaymentMethodType[];
+  couponEnabled: boolean;
+  billingAddressCollection: BillingAddressCollection;
+  successUrl: string | null;
+  cancelUrl: string | null;
+  items: PaymentLinkItem[];
+  bumps: PaymentLinkBump[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreatePaymentLinkItemParams {
   priceId: string;
   quantity: number;
 }
 
-export interface UpdateInvoiceItemParams {
+export type UpdatePaymentLinkItemParams = Partial<CreatePaymentLinkItemParams>;
+
+export interface CreatePaymentLinkBumpParams {
   priceId: string;
-  quantity: number;
+  quantity?: number;
+  amount?: number;
+  title?: string | null;
+  description?: string | null;
 }
 
-// ─── Webhook ─────────────────────────────────────────────────────────
+export interface UpdatePaymentLinkBumpParams {
+  priceId?: string;
+  quantity?: number;
+  amount?: number;
+  title?: string | null;
+  description?: string | null;
+}
+
+export interface CreatePaymentLinkParams {
+  name: string;
+  description?: string | null;
+  checkoutLayoutId?: string | null;
+  paymentMethods?: PaymentMethodType[];
+  billingAddressCollection?: BillingAddressCollection;
+  successUrl?: string | null;
+  cancelUrl?: string | null;
+  items: CreatePaymentLinkItemParams[];
+  bumps?: CreatePaymentLinkBumpParams[];
+}
+
+export interface UpdatePaymentLinkParams {
+  name?: string;
+  description?: string | null;
+  checkoutLayoutId?: string | null;
+  paymentMethods?: PaymentMethodType[];
+  billingAddressCollection?: BillingAddressCollection;
+  successUrl?: string | null;
+  cancelUrl?: string | null;
+  active?: boolean;
+  couponEnabled?: boolean;
+}
+
+export interface ListPaymentLinksParams extends ListParams {
+  name?: string;
+  active?: boolean;
+  productId?: string;
+}
+
+export type CouponType = 'percentage' | 'fixed';
+export type CouponAppliesTo = 'all' | 'specific';
+
+interface CouponFields {
+  name: string;
+  code: string;
+  description?: string | null;
+  active?: boolean;
+  maxUses?: number | null;
+  expiresAt?: string | null;
+  appliesTo: CouponAppliesTo;
+  appliesToProducts?: string[] | null;
+}
+
+export interface CreatePercentageCouponParams extends CouponFields {
+  type: 'percentage';
+  percentOff: number;
+}
+
+export interface CreateFixedCouponParams extends CouponFields {
+  type: 'fixed';
+  amountOff: number;
+  currency: Currency;
+}
+
+export type CreateCouponParams = CreatePercentageCouponParams | CreateFixedCouponParams;
+
+export interface UpdateCouponParams {
+  name?: string;
+  description?: string | null;
+  active?: boolean;
+  maxUses?: number | null;
+  expiresAt?: string | null;
+  appliesTo?: CouponAppliesTo;
+  appliesToProducts?: string[] | null;
+}
+
+export interface Coupon {
+  id: string;
+  name: string;
+  description: string | null;
+  active: boolean;
+  type: CouponType;
+  code: string;
+  currency: Currency | null;
+  amountOff: number | null;
+  percentOff: number | null;
+  uses: number;
+  maxUses: number | null;
+  appliesTo: CouponAppliesTo;
+  appliesToProducts: string[] | null;
+  expiresAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type ListCouponsParams = ListParams;
+
+export type TransferStatus =
+  | 'awaiting_approval'
+  | 'pending'
+  | 'processing'
+  | 'completed'
+  | 'canceled'
+  | 'failed';
+export type TransferType = 'key' | 'hash' | 'beneficiary';
+export type TransferDirection = 'in' | 'out';
+export type PixKeyType = 'email' | 'phone' | 'cpf' | 'cnpj' | 'random';
+export type ReceiptFormat = 'pdf' | 'image';
+
+export interface ListTransfersParams extends ListParams {
+  direction?: TransferDirection;
+}
+
+export type TransferLookupParams =
+  | { type: 'key'; value: string }
+  | { type: 'hash'; value: string }
+  | { type: 'beneficiary'; beneficiaryId: string; beneficiaryAccountId: string };
+
+export type CreateTransferParams =
+  | {
+      type: 'key';
+      pixKey: string;
+      pixKeyType: PixKeyType;
+      amount: number;
+      description?: string;
+      paymentDate?: string;
+    }
+  | {
+      type: 'hash';
+      hash: string;
+      description?: string;
+      paymentDate?: string;
+    };
+
+export interface TransferLookup {
+  type: 'key' | 'hash';
+  isBeneficiary: boolean;
+  pixKey: string;
+  name: string;
+  tradingName: string | null;
+  taxNumber: string;
+  ispb: string;
+  bank: string;
+  bankName: string;
+  branch: string | null;
+  account: string | null;
+  accountType: string | null;
+  pixKeyType?: string | number;
+  accountDigit?: string | null;
+  hash?: string;
+  originalValue?: string;
+  finalValue?: string;
+  dueDate?: string | null;
+  description?: string | null;
+}
+
+export interface TransferParty {
+  name: string;
+  taxNumber: string;
+  bankName: string;
+}
+
+export interface TransferTransaction {
+  id: string;
+  entryType: 'credit' | 'debit';
+  amount: number;
+  description: string | null;
+  endToEndId: string | null;
+  availableAt: string;
+  source: { type: string; id: string };
+  createdAt: string;
+}
+
+export interface Transfer {
+  id: string;
+  status: TransferStatus;
+  direction: TransferDirection;
+  type: TransferType;
+  amount: number;
+  pixKey: string | null;
+  pixKeyType: PixKeyType | null;
+  from: TransferParty;
+  to: TransferParty;
+  endToEndId: string | null;
+  providerTransactionId: string | null;
+  url: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreatedTransfer extends Transfer {
+  transaction: TransferTransaction;
+}
 
 export const WebhookEvent = {
-  PAYMENT_CREATED: 'payment.created',
-  PAYMENT_UPDATED: 'payment.updated',
-  PAYMENT_INCOMPLETE: 'payment.incomplete',
-  PAYMENT_FAILED: 'payment.failed',
-  PAYMENT_PENDING: 'payment.pending',
-  PAYMENT_APPROVED: 'payment.approved',
-  PAYMENT_REFUSED: 'payment.refused',
-  PAYMENT_REFUNDED: 'payment.refunded',
-
+  CHARGE_CREATED: 'charge.created',
+  CHARGE_UPDATED: 'charge.updated',
+  CHARGE_PENDING: 'charge.pending',
+  CHARGE_PAID: 'charge.paid',
+  CHARGE_EXPIRED: 'charge.expired',
+  CHARGE_REFUNDED: 'charge.refunded',
+  CHARGE_PARTIALLY_REFUNDED: 'charge.partially_refunded',
+  CHARGE_FAILED: 'charge.failed',
+  CHARGE_IN_REVIEW: 'charge.in_review',
+  CHARGE_CHARGEBACK: 'charge.chargeback',
   CUSTOMER_CREATED: 'customer.created',
   CUSTOMER_UPDATED: 'customer.updated',
-
+  TRANSFER_CREATED: 'transfer.created',
+  TRANSFER_UPDATED: 'transfer.updated',
+  TRANSFER_PROCESSING: 'transfer.processing',
+  TRANSFER_COMPLETED: 'transfer.completed',
+  TRANSFER_FAILED: 'transfer.failed',
+  DISPUTE_CREATED: 'dispute.created',
+  DISPUTE_UPDATED: 'dispute.updated',
+  DISPUTE_RESOLVED: 'dispute.resolved',
+  REFUND_CREATED: 'refund.created',
+  REFUND_UPDATED: 'refund.updated',
+  REFUND_PROCESSING: 'refund.processing',
+  REFUND_COMPLETED: 'refund.completed',
+  REFUND_FAILED: 'refund.failed',
+  PAYMENT_CREATED: 'payment.created',
+  PAYMENT_INCOMPLETE: 'payment.incomplete',
+  PAYMENT_PENDING: 'payment.pending',
+  PAYMENT_APPROVED: 'payment.approved',
+  PAYMENT_REFUNDED: 'payment.refunded',
+  PAYMENT_REFUSED: 'payment.refused',
+  PAYMENT_FAILED: 'payment.failed',
+  INVOICE_CREATED: 'invoice.created',
+  INVOICE_OPENED: 'invoice.opened',
+  INVOICE_PAID: 'invoice.paid',
+  INVOICE_VOIDED: 'invoice.voided',
+  INVOICE_UNCOLLECTIBLE: 'invoice.uncollectible',
+  INVOICE_PAYMENT_FAILED: 'invoice.payment_failed',
+  INVOICE_UPDATED: 'invoice.updated',
+  INVOICE_DRAFTED: 'invoice.drafted',
   SUBSCRIPTION_CREATED: 'subscription.created',
-  SUBSCRIPTION_UPDATED: 'subscription.updated',
   SUBSCRIPTION_ACTIVE: 'subscription.active',
   SUBSCRIPTION_CANCELED: 'subscription.canceled',
   SUBSCRIPTION_PAST_DUE: 'subscription.past_due',
@@ -492,79 +1018,80 @@ export const WebhookEvent = {
   SUBSCRIPTION_INCOMPLETE: 'subscription.incomplete',
   SUBSCRIPTION_PAUSED: 'subscription.paused',
   SUBSCRIPTION_VOID: 'subscription.void',
-
-  INVOICE_CREATED: 'invoice.created',
-  INVOICE_UPDATED: 'invoice.updated',
-  INVOICE_DRAFTED: 'invoice.drafted',
-  INVOICE_OPENED: 'invoice.opened',
-  INVOICE_PAID: 'invoice.paid',
-  INVOICE_VOIDED: 'invoice.voided',
-
-  REFUND_CREATED: 'refund.created',
-  REFUND_UPDATED: 'refund.updated',
-  REFUND_PENDING: 'refund.pending',
-  REFUND_PROCESSING: 'refund.processing',
-  REFUND_COMPLETED: 'refund.completed',
-  REFUND_FAILED: 'refund.failed',
-
-  DISPUTE_CREATED: 'dispute.created',
-  DISPUTE_UPDATED: 'dispute.updated',
-  DISPUTE_NEEDS_RESPONSE: 'dispute.needs_response',
-  DISPUTE_UNDER_REVIEW: 'dispute.under_review',
-  DISPUTE_WON: 'dispute.won',
-  DISPUTE_LOST: 'dispute.lost',
-
+  SUBSCRIPTION_UPDATED: 'subscription.updated',
   CHECKOUT_SESSION_CREATED: 'checkout-session.created',
   CHECKOUT_SESSION_OPENED: 'checkout-session.opened',
   CHECKOUT_SESSION_UPDATED: 'checkout-session.updated',
   CHECKOUT_SESSION_COMPLETED: 'checkout-session.completed',
   CHECKOUT_SESSION_EXPIRED: 'checkout-session.expired',
+  PRODUCT_CREATED: 'product.created',
+  PRODUCT_UPDATED: 'product.updated',
+  PRICE_CREATED: 'price.created',
+  PRICE_UPDATED: 'price.updated',
 } as const;
 
-export type WebhookEvent = typeof WebhookEvent[keyof typeof WebhookEvent];
+export type WebhookEvent = (typeof WebhookEvent)[keyof typeof WebhookEvent];
 
 export interface Webhook {
   id: string;
-  accountId: string;
-  name: string;
-  description?: string | null;
+  description: string | null;
+  active: boolean;
   url: string;
   headers: Record<string, string>;
   events: WebhookEvent[];
-  active: boolean;
   secret: string;
-  livemode: boolean;
-  createdAt: Date;
-  updatedAt: Date;
-  deletedAt?: Date | null;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface CreateWebhookParams {
-  name: string;
   url: string;
   events: WebhookEvent[];
-  secret: string;
   description?: string | null;
   headers?: Record<string, string>;
   active?: boolean;
 }
 
 export interface UpdateWebhookParams {
-  name?: string;
-  description?: string | null;
   url?: string;
-  headers?: Record<string, string>;
   events?: WebhookEvent[];
+  description?: string | null;
+  headers?: Record<string, string>;
   active?: boolean;
 }
 
 export type ListWebhooksParams = ListParams;
 
-// ─── Error ───────────────────────────────────────────────────────────
+export interface WebhookLog {
+  id: string;
+  webhookId: string;
+  event: WebhookEvent;
+  method: string;
+  url: string;
+  statusCode: number | null;
+  duration: number | null;
+  request: string;
+  response: string | null;
+  retryCount: number;
+  success: boolean;
+  createdAt: string;
+}
+
+export type ApiKeyType = 'publishable' | 'secret';
+
+export interface MeResource {
+  accountId: string;
+  type: ApiKeyType;
+  permissions: string[];
+}
 
 export interface UpagError {
   message: string;
   code: string;
   statusCode?: number;
   errors?: Record<string, any> | null;
+  /** Structured context, such as the fields that failed validation. */
+  details?: unknown;
+  /** Guidance from the API: a stable `errorCode` and the `action` to take. */
+  meta?: Record<string, any> | null;
 }

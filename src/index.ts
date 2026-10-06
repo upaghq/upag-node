@@ -1,20 +1,21 @@
-// Main client
 export { Upag } from './client';
-
-// Types
 export * from './types';
 
-// Resources (for advanced usage)
 export { Customers } from './resources/customers';
-export { PaymentMethods } from './resources/payment-methods';
-export { Payments } from './resources/payments';
 export { Products } from './resources/products';
 export { Prices } from './resources/prices';
 export { CheckoutSessions } from './resources/checkout-sessions';
+export { CheckoutLayouts } from './resources/checkout-layouts';
 export { Subscriptions } from './resources/subscriptions';
 export { Invoices } from './resources/invoices';
-export { Webhooks } from './resources/webhooks';
+export { PaymentLinks } from './resources/payment-links';
+export { Coupons } from './resources/coupons';
+export { Transfers } from './resources/transfers';
+export { Webhooks, WebhookLogs } from './resources/webhooks';
+export { Cards } from './resources/cards';
+export { Charges } from './resources/charges';
+export { ThreeDSecure } from './resources/three-d-secure';
+export { Me } from './resources/me';
 
-// Default export
 import { Upag } from './client';
 export default Upag;

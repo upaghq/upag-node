@@ -1,6 +1,6 @@
 # Upag Node.js SDK
 
-Official Node.js library for the Upag API - Payment and subscription management platform.
+Official Node.js library for the Upag API.
 
 ## Installation
 
@@ -15,219 +15,236 @@ npm install upag
 ```typescript
 import { Upag } from 'upag';
 
-// Using API key only
 const upag = new Upag('sk_test_your_api_key');
 
-// Or with full configuration
 const upag = new Upag({
   apiKey: 'sk_test_your_api_key',
-  timeout: 30000, // optional, default 30s
+  timeout: 30000,
+  // baseURL: 'http://localhost:3000/v1',
+});
+```
+
+`sk_test_` talks to `https://api.upag.dev/v1`. Any other key talks to `https://api.upag.io/v1`. `baseURL` overrides the host.
+
+Amounts are integers in cents. Identifiers are UUIDs. Timestamps are ISO 8601 strings. Lists return `{ data, count }`.
+
+### Cards, 3D Secure and charges
+
+Tokenize in the browser with upag-js whenever you can. Server-side:
+
+```typescript
+const card = await upag.cards.create(
+  {
+    number: '4111111111111111',
+    expirationMonth: 12,
+    expirationYear: 2030,
+    cvv: '737',
+    holderName: 'Maria Silva',
+  },
+  { idempotencyKey: 'card-order-123' }
+);
+
+const session = await upag.threeDSecure.createSession(
+  { amount: 10000, installments: 1, card: card.id, customer: 'customer-uuid' },
+  { idempotencyKey: 'order-123' }
+);
+
+const charge = await upag.charges.create({
+  type: 'card',
+  amount: 10000,
+  card: card.id,
+  customer: 'customer-uuid',
+  threeDSecureSessionId: session.id,
+});
+
+await upag.charges.retrieve(charge.id, { includes: 'customer' });
+await upag.charges.list({ limit: 20, includes: 'items' });
+await upag.cards.list({ customer: 'customer-uuid' });
+await upag.cards.remove(card.id);
+```
+
+Pix charge with an inline customer:
+
+```typescript
+const charge = await upag.charges.create({
+  type: 'pix',
+  amount: 10000,
+  pix: { method: 'dynamic' },
+  customer: {
+    name: 'Maria Silva',
+    document: { type: 'cpf', number: '12345678909' },
+    email: 'maria@example.com',
+    phone: { countryCode: '55', areaCode: '11', number: '999999999' },
+  },
 });
 ```
 
 ### Customers
 
 ```typescript
-// Create a customer
 const customer = await upag.customers.create({
-  email: 'customer@example.com',
   name: 'John Doe',
-  phone: '+5511999999999',
-  taxId: '12345678900',
-  line1: '123 Main St',
-  city: 'São Paulo',
-  state: 'SP',
-  country: 'Brazil',
-  zipCode: '01310-100'
+  email: 'customer@example.com',
+  document: { type: 'cpf', number: '12345678909' },
+  phone: { countryCode: '55', areaCode: '11', number: '999999999' },
+  address: {
+    street: 'Rua Augusta',
+    number: '100',
+    city: 'São Paulo',
+    state: 'SP',
+    country: 'BR',
+    zip: '01310100',
+  },
 });
 
-// Retrieve a customer
-const customer = await upag.customers.retrieve('cus_123');
-
-// Update a customer
-const updated = await upag.customers.update('cus_123', {
-  name: 'John Smith',
-  phone: '+5511888888888'
-});
-
-// List customers
-const customers = await upag.customers.list({
-  limit: 10,
-  page: 1
-});
-
-// Delete a customer
-const deleted = await upag.customers.delete('cus_123');
+await upag.customers.retrieve(customer.id);
+await upag.customers.update(customer.id, { name: 'John Smith' });
+await upag.customers.list({ limit: 10, page: 1 });
+await upag.customers.delete(customer.id);
 ```
 
-### Payment Methods
+### Products and prices
 
 ```typescript
-// Create a credit card payment method
-const paymentMethod = await upag.paymentMethods.create('cus_123', {
-  type: 'credit_card',
-  card: {
-    number: '4242424242424242',
-    expiryMonth: '12',
-    expiryYear: '2025',
-    cvv: '123',
-    holderName: 'John Doe'
-  }
+const product = await upag.products.create({
+  name: 'Plan',
+  description: 'Monthly access',
+  defaultPrice: {
+    name: 'Monthly',
+    amount: 9900,
+    currency: 'brl',
+    billingType: 'recurring',
+    interval: 'month',
+    intervalCount: 1,
+  },
 });
 
-// Create a PIX payment method
-const pixMethod = await upag.paymentMethods.create('cus_123', {
-  type: 'pix',
-  pix: { expiresIn: 600 } // 10 minutes
-});
-
-// Retrieve a payment method
-const paymentMethod = await upag.paymentMethods.retrieve('cus_123', 'pm_456');
-
-// List payment methods for a customer
-const paymentMethods = await upag.paymentMethods.list('cus_123', {
-  limit: 10,
-  page: 1
-});
-
-// Delete a payment method
-const deleted = await upag.paymentMethods.delete('cus_123', 'pm_456');
-```
-
-### Payments
-
-```typescript
-// Create a payment with existing customer and payment method IDs
-const payment = await upag.payments.create({
-  customer: 'cus_123',
-  paymentMethod: 'pm_456',
-  amount: 10000, // Amount in cents (R$ 100.00)
+const price = await upag.prices.create(product.id, {
+  name: 'Yearly',
+  amount: 99000,
   currency: 'brl',
-  installments: 1
-});
-
-// Retrieve a payment
-const payment = await upag.payments.retrieve('pay_123');
-
-// List payments
-const payments = await upag.payments.list({
-  limit: 10,
-  page: 1,
-  customer: 'cus_123' // optional filter
+  billingType: 'recurring',
+  interval: 'year',
+  intervalCount: 1,
 });
 ```
 
-### Inline Creation (Find or Create Pattern)
-
-The payments API supports creating customers and payment methods inline, improving developer experience by reducing the number of API calls needed.
+### Invoices and subscriptions
 
 ```typescript
-// Create payment with inline customer and payment method
-const payment = await upag.payments.create({
-  customer: {
-    email: 'john@example.com',
-    name: 'John Doe',
-    phone: '+5511999999999',
-    taxId: '12345678900'
-  },
-  paymentMethod: {
-    type: 'credit_card',
-    card: {
-      number: '4111111111111111',
-      expiryMonth: '12',
-      expiryYear: '2030',
-      cvv: '123',
-      holderName: 'John Doe'
-    }
-  },
-  amount: 5000,
-  currency: 'brl',
-  installments: 3
+const invoice = await upag.invoices.create({
+  customer: customer.id,
+  items: [{ price: price.id, quantity: 1 }],
+  open: true,
 });
 
-// Mix existing ID with inline creation
-const payment = await upag.payments.create({
-  customer: 'cus_123', // existing customer
-  paymentMethod: {
-    type: 'pix',
-    pix: { expiresIn: 1800 } // 30 minutes
-  },
-  amount: 2500,
-  currency: 'brl'
+await upag.invoices.pay(invoice.id, { method: 'pix' });
+await upag.invoices.pay(invoice.id, {
+  method: 'card',
+  card: card.id,
+  threeDSecureSessionId: session.id,
 });
 
-// The response includes the created customer and payment method
-console.log(payment.customer.id);       // New customer ID
-console.log(payment.paymentMethod.id);  // New payment method ID
+const subscription = await upag.subscriptions.create({
+  customer: customer.id,
+  paymentMethod: 'card',
+  card: card.id,
+  items: [{ price: price.id, quantity: 1 }],
+});
 
-// For PIX payments, the QR code is returned
-if (payment.pixQrCode) {
-  console.log(payment.pixQrCode);       // Base64 QR code image or PIX copy-paste code
-}
+await upag.subscriptions.cancel(subscription.id, { atPeriodEnd: true });
+```
+
+### Checkout sessions and payment links
+
+Secret-key session create does not return a `clientSecret`. Shopper checkout starts from a payment-link code in upag-js.
+
+```typescript
+const session = await upag.checkoutSessions.create({
+  items: [{ price: price.id, quantity: 1 }],
+  paymentMethods: ['pix', 'card'],
+  successUrl: 'https://example.com/ok',
+  cancelUrl: 'https://example.com/cancel',
+});
+
+await upag.checkoutSessions.confirm(session.id, {
+  customer: customer.id,
+  payment: { method: 'pix' },
+});
+
+const link = await upag.paymentLinks.create({
+  name: 'Checkout',
+  items: [{ priceId: price.id, quantity: 1 }],
+});
+```
+
+### Transfers and webhooks
+
+```typescript
+const lookup = await upag.transfers.lookup({ type: 'key', value: 'email@example.com' });
+const transfer = await upag.transfers.create({
+  type: 'key',
+  pixKey: 'email@example.com',
+  pixKeyType: 'email',
+  amount: 1500,
+});
+
+const webhook = await upag.webhooks.create({
+  url: 'https://example.com/webhooks',
+  events: ['charge.paid', 'invoice.paid'],
+});
+
+await upag.webhooks.logs.list(webhook.id);
+await upag.me.retrieve();
 ```
 
 ## TypeScript Support
 
-This library is written in TypeScript and includes type definitions out of the box.
+This library is written in TypeScript and includes type definitions.
 
 ```typescript
-import { 
-  Upag,
-  Customer,
-  Payment,
-  PaymentMethod,
-  CreateCustomerParams,
-  CreatePaymentParams,
-  CreatePaymentMethodParams,
-  CustomerInput,
-  PaymentMethodInput,
-  Currency
-} from 'upag';
+import { Upag, CreateChargeParams, CreateCustomerParams } from 'upag';
 
-// Type-safe payment creation with union types
-const params: CreatePaymentParams = {
-  customer: { email: 'test@example.com', name: 'Test' }, // or string ID
-  paymentMethod: { type: 'pix', pix: { expiresIn: 600 } }, // or string ID
+const params: CreateChargeParams = {
+  type: 'pix',
   amount: 1000,
-  currency: 'brl'
+  pix: { method: 'dynamic' },
+  customer: {
+    name: 'Test',
+    document: { type: 'cpf', number: '12345678909' },
+  },
 };
 ```
 
 ## Error Handling
 
-All API errors are thrown with detailed information:
+API errors are thrown as `UpagError` objects (`message`, `code`, `statusCode`, `details`, `meta`):
 
 ```typescript
 try {
-  const customer = await upag.customers.create({
-    email: 'invalid-email',
-    name: 'John Doe'
+  await upag.customers.create({
+    name: 'John Doe',
+    document: { type: 'cpf', number: 'invalid' },
   });
 } catch (error) {
-  console.error('Error type:', error.type);
-  console.error('Error message:', error.message);
-  console.error('Status code:', error.statusCode);
-  console.error('Error code:', error.code);
-  console.error('Details:', error.details);
+  console.error(error.message);
+  console.error(error.code);
+  console.error(error.statusCode);
+  console.error(error.details);
+  console.error(error.meta);
 }
 ```
 
-### Error Types
-
-- `api_error` - Server-side error
-- `validation_error` - Invalid parameters
-- `authentication_error` - Invalid API key
-- `network_error` - Network/connection error
-- `client_error` - Client-side error
+Codes include `NETWORK_ERROR`, `CLIENT_ERROR`, `VALIDATION_FAILED`, and API-specific codes.
 
 ## API Keys
 
 Get your API keys from the [Upag Dashboard](https://app.upag.io).
 
-- **Test mode**: Use keys starting with `sk_test_`
-- **Live mode**: Use keys starting with `sk_live_`
+- **Sandbox**: keys starting with `sk_test_`
+- **Production**: keys starting with `sk_live_`
 
-⚠️ **Never share your API keys or commit them to version control.**
+Never share your API keys or commit them to version control.
 
 ## Requirements
 
@@ -237,16 +254,9 @@ Get your API keys from the [Upag Dashboard](https://app.upag.io).
 ## Development
 
 ```bash
-# Install dependencies
 npm install
-
-# Build the package
 npm run build
-
-# Run tests
 npm test
-
-# Watch mode for development
 npm run dev
 ```
 
@@ -258,8 +268,4 @@ MIT
 
 - Documentation: https://docs.upag.io
 - Email: support@upag.io
-- GitHub: https://github.com/upaghq/upag
-
-## Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
+- GitHub: https://github.com/upaghq/upag-node
