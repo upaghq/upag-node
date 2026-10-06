@@ -26,7 +26,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Breaking**: list envelope is `{ data, count }`. `hasMore` is gone.
 - **Breaking**: customers use `document`, nested `phone`, and `address` (`zip`, not `zipCode` / `taxId` / `line1`).
 - **Breaking**: updates are `PATCH`. Subscription cancel is `POST /subscriptions/:id/cancel` with `{ atPeriodEnd, reason }`.
-- **Breaking**: entity refs on the wire drop the `Id` suffix (`customer`, `price`, `card`) except known API exceptions (`priceId` on payment links, `customerId` on cards, `accountId` on charge splits).
+- **Breaking**: entity refs on the wire drop the `Id` suffix (`customer`, `price`, `card`, `account`, `threeDSecureSession`, `webhook`, `checkoutLayout`, `product`, `beneficiary`, `beneficiaryAccount`).
 - **Breaking**: timestamps are ISO strings. Amounts are integer cents.
 - **Breaking**: `UpagError` is `{ message, code, statusCode, details, meta }`. There is no `type`.
 - Checkout session create with a secret key does not return `clientSecret`.

@@ -54,7 +54,7 @@ const charge = await upag.charges.create({
   amount: 10000,
   card: card.id,
   customer: 'customer-uuid',
-  threeDSecureSessionId: session.id,
+  threeDSecureSession: session.id,
 });
 
 await upag.charges.retrieve(charge.id, { includes: 'customer' });
@@ -142,7 +142,7 @@ await upag.invoices.pay(invoice.id, { method: 'pix' });
 await upag.invoices.pay(invoice.id, {
   method: 'card',
   card: card.id,
-  threeDSecureSessionId: session.id,
+  threeDSecureSession: session.id,
 });
 
 const subscription = await upag.subscriptions.create({
@@ -174,7 +174,7 @@ await upag.checkoutSessions.confirm(session.id, {
 
 const link = await upag.paymentLinks.create({
   name: 'Checkout',
-  items: [{ priceId: price.id, quantity: 1 }],
+  items: [{ price: price.id, quantity: 1 }],
 });
 ```
 

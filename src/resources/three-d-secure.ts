@@ -11,7 +11,7 @@ import {
 /**
  * 3D Secure sessions. Your server opens a session and hands its `clientSecret` to the
  * checkout page; the browser SDK (upag-js) runs the authentication. The charge then
- * references the session with `threeDSecureSessionId`.
+ * references the session with `threeDSecureSession`.
  */
 export class ThreeDSecure extends BaseResource {
   constructor(http: HttpClient) {

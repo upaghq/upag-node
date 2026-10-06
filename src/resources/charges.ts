@@ -14,7 +14,7 @@ export class Charges extends BaseResource {
 
   /**
    * Create a Pix or card charge. For a card charge authenticated with 3D Secure, pass the
-   * completed session as `threeDSecureSessionId`.
+   * completed session as `threeDSecureSession`.
    */
   async create(params: CreateChargeParams): Promise<Charge> {
     return this.http.post<Charge>(this.basePath, params);

@@ -86,7 +86,7 @@ export type CardStatus = 'active' | 'invalid' | 'removed';
 
 export interface Card {
   id: string;
-  customerId: string | null;
+  customer: string | null;
   brand: CardBrand;
   firstDigits: string;
   lastDigits: string;
@@ -129,7 +129,7 @@ export interface ThreeDSecureSession {
   status: ThreeDSecureSessionStatus;
   /** What the card will be charged, in cents. Fixed when the session is created. */
   finalAmount: number;
-  cardId: string;
+  card: string;
   expiresAt: string;
 }
 
@@ -193,7 +193,7 @@ export interface ChargeItem {
 }
 
 export interface ChargeSplitParams {
-  accountId: string;
+  account: string;
   /** In cents, greater than zero. */
   amount: number;
 }
@@ -253,7 +253,7 @@ export interface CreateCardChargeParams extends BaseCreateChargeParams {
   /** Where the payer appears to be. Never stored on the customer. */
   location?: ChargeLocation;
   /** A completed 3D Secure session for this card, amount and installments. */
-  threeDSecureSessionId?: string;
+  threeDSecureSession?: string;
   /** Public IPv4 or IPv6 of the payer. */
   ipAddress?: string;
 }
@@ -364,7 +364,7 @@ export interface PayCardParams {
   method: 'card';
   card: string;
   installments?: number;
-  threeDSecureSessionId?: string;
+  threeDSecureSession?: string;
   ipAddress?: string;
   location?: ChargeLocation;
   softDescriptor?: string;
@@ -726,16 +726,16 @@ export type ListCheckoutLayoutsParams = ListParams;
 
 export interface PaymentLinkItem {
   id: string;
-  productId: string;
-  priceId: string;
+  product: string;
+  price: string;
   quantity: number;
   amount: number;
 }
 
 export interface PaymentLinkBump {
   id: string;
-  productId: string;
-  priceId: string;
+  product: string;
+  price: string;
   quantity: number;
   amount: number;
   title: string | null;
@@ -746,7 +746,7 @@ export interface PaymentLink {
   id: string;
   name: string;
   description: string | null;
-  checkoutLayoutId: string | null;
+  checkoutLayout: string | null;
   active: boolean;
   amount: number;
   url: string;
@@ -762,14 +762,14 @@ export interface PaymentLink {
 }
 
 export interface CreatePaymentLinkItemParams {
-  priceId: string;
+  price: string;
   quantity: number;
 }
 
 export type UpdatePaymentLinkItemParams = Partial<CreatePaymentLinkItemParams>;
 
 export interface CreatePaymentLinkBumpParams {
-  priceId: string;
+  price: string;
   quantity?: number;
   amount?: number;
   title?: string | null;
@@ -777,7 +777,7 @@ export interface CreatePaymentLinkBumpParams {
 }
 
 export interface UpdatePaymentLinkBumpParams {
-  priceId?: string;
+  price?: string;
   quantity?: number;
   amount?: number;
   title?: string | null;
@@ -787,7 +787,7 @@ export interface UpdatePaymentLinkBumpParams {
 export interface CreatePaymentLinkParams {
   name: string;
   description?: string | null;
-  checkoutLayoutId?: string | null;
+  checkoutLayout?: string | null;
   paymentMethods?: PaymentMethodType[];
   billingAddressCollection?: BillingAddressCollection;
   successUrl?: string | null;
@@ -799,7 +799,7 @@ export interface CreatePaymentLinkParams {
 export interface UpdatePaymentLinkParams {
   name?: string;
   description?: string | null;
-  checkoutLayoutId?: string | null;
+  checkoutLayout?: string | null;
   paymentMethods?: PaymentMethodType[];
   billingAddressCollection?: BillingAddressCollection;
   successUrl?: string | null;
@@ -811,7 +811,7 @@ export interface UpdatePaymentLinkParams {
 export interface ListPaymentLinksParams extends ListParams {
   name?: string;
   active?: boolean;
-  productId?: string;
+  product?: string;
 }
 
 export type CouponType = 'percentage' | 'fixed';
@@ -891,7 +891,7 @@ export interface ListTransfersParams extends ListParams {
 export type TransferLookupParams =
   | { type: 'key'; value: string }
   | { type: 'hash'; value: string }
-  | { type: 'beneficiary'; beneficiaryId: string; beneficiaryAccountId: string };
+  | { type: 'beneficiary'; beneficiary: string; beneficiaryAccount: string };
 
 export type CreateTransferParams =
   | {
@@ -1064,7 +1064,7 @@ export type ListWebhooksParams = ListParams;
 
 export interface WebhookLog {
   id: string;
-  webhookId: string;
+  webhook: string;
   event: WebhookEvent;
   method: string;
   url: string;
@@ -1080,7 +1080,7 @@ export interface WebhookLog {
 export type ApiKeyType = 'publishable' | 'secret';
 
 export interface MeResource {
-  accountId: string;
+  account: string;
   type: ApiKeyType;
   permissions: string[];
 }

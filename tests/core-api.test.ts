@@ -129,10 +129,10 @@ describe('charges', () => {
       amount: 10000,
       card: 'card-1',
       customer: 'cus-1',
-      threeDSecureSessionId: 's1',
+      threeDSecureSession: 's1',
     });
     expect(sent[0].url).toBe('https://api.upag.dev/v1/charges');
-    expect(sent[0].data.threeDSecureSessionId).toBe('s1');
+    expect(sent[0].data.threeDSecureSession).toBe('s1');
   });
 
   it('passes includes on retrieve and list', async () => {
@@ -184,10 +184,10 @@ describe('catalog', () => {
   it('pays an invoice with pix or card', async () => {
     const client = upag();
     await client.invoices.pay('inv-1', { method: 'pix' });
-    await client.invoices.pay('inv-1', { method: 'card', card: 'card-1', threeDSecureSessionId: 's1' });
+    await client.invoices.pay('inv-1', { method: 'card', card: 'card-1', threeDSecureSession: 's1' });
     expect(sent[0].url).toBe('https://api.upag.dev/v1/invoices/inv-1/pay');
     expect(sent[0].data).toEqual({ method: 'pix' });
-    expect(sent[1].data).toMatchObject({ method: 'card', card: 'card-1', threeDSecureSessionId: 's1' });
+    expect(sent[1].data).toMatchObject({ method: 'card', card: 'card-1', threeDSecureSession: 's1' });
   });
 
   it('cancels a subscription with POST', async () => {
@@ -211,13 +211,13 @@ describe('catalog', () => {
 describe('new resources', () => {
   const upag = () => new Upag({ apiKey: 'sk_test_x' });
 
-  it('creates a payment link with priceId items', async () => {
+  it('creates a payment link with price items', async () => {
     await upag().paymentLinks.create({
       name: 'Checkout',
-      items: [{ priceId: 'price-1', quantity: 1 }],
+      items: [{ price: 'price-1', quantity: 1 }],
     });
     expect(sent[0].url).toBe('https://api.upag.dev/v1/payment-links');
-    expect(sent[0].data.items[0].priceId).toBe('price-1');
+    expect(sent[0].data.items[0].price).toBe('price-1');
   });
 
   it('updates a checkout layout with PATCH', async () => {
@@ -241,6 +241,11 @@ describe('new resources', () => {
   it('looks up and creates a transfer', async () => {
     const client = upag();
     await client.transfers.lookup({ type: 'key', value: 'a@b.com' });
+    await client.transfers.lookup({
+      type: 'beneficiary',
+      beneficiary: 'ben-1',
+      beneficiaryAccount: 'acc-1',
+    });
     await client.transfers.create({
       type: 'key',
       pixKey: 'a@b.com',
@@ -249,8 +254,13 @@ describe('new resources', () => {
     });
     await client.transfers.receipt('tr-1', { format: 'image' });
     expect(sent[0].url).toBe('https://api.upag.dev/v1/transfers/lookup');
-    expect(sent[1].url).toBe('https://api.upag.dev/v1/transfers');
-    expect(sent[2].url).toBe('https://api.upag.dev/v1/transfers/tr-1/receipt?format=image');
+    expect(sent[1].data).toEqual({
+      type: 'beneficiary',
+      beneficiary: 'ben-1',
+      beneficiaryAccount: 'acc-1',
+    });
+    expect(sent[2].url).toBe('https://api.upag.dev/v1/transfers');
+    expect(sent[3].url).toBe('https://api.upag.dev/v1/transfers/tr-1/receipt?format=image');
   });
 
   it('lists and reprocesses webhook logs', async () => {
