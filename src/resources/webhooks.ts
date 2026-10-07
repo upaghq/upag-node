@@ -1,3 +1,4 @@
+import crypto from 'crypto';
 import { BaseResource } from './base-resource';
 import { HttpClient } from '../utils/http-client';
 import {
@@ -53,5 +54,38 @@ export class Webhooks extends BaseResource {
 
   async list(params?: ListWebhooksParams): Promise<ListResponse<Webhook>> {
     return this.http.get<ListResponse<Webhook>>(`${this.basePath}${this.buildQueryString(params)}`);
+  }
+
+  /**
+   * Verifies an inbound delivery against the webhook signing secret.
+   * Pass the raw body — do not parse JSON first — and the `X-Webhook-Signature` header.
+   */
+  validateSignature(
+    payload: Buffer | string,
+    signature: string | string[] | undefined,
+    secret: string | undefined
+  ): boolean {
+    if (!secret) {
+      return false;
+    }
+
+    const received = Array.isArray(signature) ? signature[0] : signature;
+    if (!received) {
+      return false;
+    }
+
+    const expected = `sha256=${crypto
+      .createHmac('sha256', secret)
+      .update(payload)
+      .digest('hex')}`;
+
+    const receivedBytes = Buffer.from(received);
+    const expectedBytes = Buffer.from(expected);
+
+    if (receivedBytes.length !== expectedBytes.length) {
+      return false;
+    }
+
+    return crypto.timingSafeEqual(receivedBytes, expectedBytes);
   }
 }

@@ -198,6 +198,23 @@ await upag.webhooks.logs.list(webhook.id);
 await upag.me.retrieve();
 ```
 
+Verify deliveries with the raw body and the `X-Webhook-Signature` header. Do not use `express.json()` on this route — parsing and re-serializing the JSON changes the payload and breaks the comparison.
+
+```typescript
+import express from 'express';
+
+app.post('/webhooks', express.raw({ type: '*/*' }), (req, res) => {
+  const ok = upag.webhooks.validateSignature(
+    req.body, // raw Buffer
+    req.headers['x-webhook-signature'],
+    process.env.UPAG_WEBHOOK_SECRET
+  );
+  if (!ok) return res.sendStatus(401);
+  // ... handle the event
+  res.sendStatus(200);
+});
+```
+
 ## TypeScript Support
 
 This library is written in TypeScript and includes type definitions.
