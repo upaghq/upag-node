@@ -11,7 +11,9 @@ export interface ListResponse<T> {
 }
 
 export interface ListParams {
+  /** @default 1 */
   page?: number;
+  /** @default 15 */
   limit?: number;
 }
 
@@ -142,7 +144,7 @@ export interface CreatedThreeDSecureSession extends ThreeDSecureSession {
 }
 
 export interface CreateThreeDSecureSessionParams {
-  /** List price in cents. Send exactly what the charge will carry. */
+  /** List price in cents, up to 2,147,483,647. Send exactly what the charge will carry. */
   amount: number;
   /** 1 to 12. Defaults to 1. */
   installments?: number;
@@ -150,7 +152,7 @@ export interface CreateThreeDSecureSessionParams {
   card: string;
   /** A customer UUID, or an inline customer used for this authentication only. */
   customer: string | CustomerInput;
-  /** Name shown on the bank's challenge screen. */
+  /** Name shown on the bank's challenge screen, up to 255 characters. */
   softDescriptor?: string;
   /** Sandbox only: always show the bank challenge. */
   forceChallenge?: boolean;
@@ -166,6 +168,22 @@ export type ChargeStatus =
   | 'refunded'
   | 'partially_refunded'
   | 'chargeback';
+/** Why a charge failed. Set when `status` is `failed`, `null` otherwise. */
+export type ChargeFailureCode =
+  | 'card_declined'
+  | 'card_expired'
+  | 'card_blocked'
+  | 'card_invalid'
+  | 'card_invalid_number'
+  | 'card_invalid_cvv'
+  | 'insufficient_funds'
+  | 'installments_exceeded'
+  | 'fraud_suspected'
+  | 'antifraud_declined'
+  | 'authentication_failed'
+  | 'issuer_unavailable'
+  | 'processing_error'
+  | 'unknown';
 export type ChargeItemKind = 'physical' | 'digital' | 'shipping' | 'other';
 
 export interface ChargeItemParams {
@@ -265,10 +283,16 @@ export interface Charge {
   type: ChargeType;
   status: ChargeStatus;
   amount: number;
+  /** Why the charge failed, `null` when it did not. */
+  failureCode: ChargeFailureCode | null;
   description: string | null;
   meta: Record<string, string> | null;
   /** The customer id, the expanded customer when `includes=customer`, or `null`. */
   customer: string | Customer | null;
+  /**
+   * Always present on `charges.retrieve`. On `charges.list` it is present only
+   * with `includes=items`.
+   */
   items?: ChargeItem[];
   pix?: {
     reference: string | null;
@@ -290,7 +314,7 @@ export interface Charge {
 }
 
 export interface ListChargesParams extends ListParams {
-  /** `items`, `customer`, or both, comma separated. */
+  /** `items`, `customer`, or both, comma separated. `retrieve` always returns `items`. */
   includes?: string;
 }
 
@@ -389,7 +413,7 @@ export interface InvoiceItem {
 
 export interface InvoiceDiscount {
   id: string;
-  item: string | null;
+  item: string;
   coupon: string;
   type: 'coupon';
   amount: number;
@@ -397,8 +421,8 @@ export interface InvoiceDiscount {
 
 export interface InvoicePayment {
   charge: string;
-  type: string;
-  status: string;
+  type: ChargeType;
+  status: ChargeStatus;
   settledAt: string | null;
   createdAt: string;
 }
@@ -406,6 +430,7 @@ export interface InvoicePayment {
 export interface Invoice {
   id: string;
   customer: string;
+  /** The id of the saved payment method, or `null`. Not the `pix` / `card` value of `Subscription.paymentMethod`. */
   paymentMethod: string | null;
   subscription: string | null;
   status: InvoiceStatus;
@@ -490,7 +515,12 @@ export type CancellationReason =
   | 'switched_service'
   | 'too_complex'
   | 'too_expensive'
-  | 'unused';
+  | 'unused'
+  /** Set by Upag: the trial ended with no payment method on file and `missingPaymentMethod` was `cancel`. Not accepted on cancel. */
+  | 'missing_payment_method';
+export type TrialEndBehavior = 'create_invoice' | 'cancel';
+export type TrialInterval = 'day' | 'week' | 'month';
+export type PaymentMethodCollection = 'always' | 'if_required';
 export type ScheduledChangeOperation = 'add' | 'update' | 'remove';
 
 export interface SubscriptionItem {
@@ -519,6 +549,8 @@ export interface Subscription {
   endDate: string | null;
   trialStartDate: string | null;
   trialEndDate: string | null;
+  /** What happens when the trial ends with no payment method. `null` when there was no trial. */
+  trialEndBehavior: TrialEndBehavior | null;
   currentPeriodStart: string | null;
   currentPeriodEnd: string | null;
   canceledAt: string | null;
@@ -546,7 +578,7 @@ export interface UpdateSubscriptionParams {
 
 export interface CancelSubscriptionParams {
   atPeriodEnd?: boolean;
-  reason?: CancellationReason;
+  reason?: Exclude<CancellationReason, 'missing_payment_method'>;
 }
 
 export interface ListSubscriptionsParams extends ListParams {
@@ -584,6 +616,44 @@ export interface SubscriptionScheduledChange {
 
 export type CheckoutSessionStatus = 'open' | 'complete' | 'expired';
 
+/** A relative trial, counted from the moment the subscription is created. Up to 730 days: `day` ≤ 730, `week` ≤ 104, `month` ≤ 24. */
+export interface TrialDuration {
+  interval: TrialInterval;
+  intervalCount: number;
+}
+
+export interface TrialSettings {
+  endBehavior: {
+    /** @default 'create_invoice' */
+    missingPaymentMethod: TrialEndBehavior;
+  };
+}
+
+/**
+ * Trial of the subscription an offer creates. The trial is a property of the
+ * link or session, not of the price. Needs at least one recurring item.
+ */
+export interface PaymentLinkSubscriptionDataParams {
+  /** `null` removes the trial. */
+  trial?: TrialDuration | null;
+  trialSettings?: { endBehavior?: { missingPaymentMethod?: TrialEndBehavior } };
+}
+
+/** A session takes either a relative `trial` or an absolute `trialEnd`, never both. */
+export interface CheckoutSessionSubscriptionDataParams extends PaymentLinkSubscriptionDataParams {
+  /** At least 48 hours from now. Unix seconds or an ISO date. */
+  trialEnd?: number | string;
+}
+
+export interface PaymentLinkSubscriptionData {
+  trial: TrialDuration | null;
+  trialSettings: TrialSettings;
+}
+
+export interface CheckoutSessionSubscriptionData extends PaymentLinkSubscriptionData {
+  trialEnd: string | null;
+}
+
 export interface CheckoutSessionItem {
   id: string;
   price: string;
@@ -613,6 +683,9 @@ export interface CheckoutSession {
   checkoutLayout: string | null;
   paymentLink: string | null;
   paymentMethods: PaymentMethodType[];
+  subscriptionData: CheckoutSessionSubscriptionData;
+  /** `if_required` lets a session with nothing to pay today finish without a payment method. */
+  paymentMethodCollection: PaymentMethodCollection;
   status: CheckoutSessionStatus;
   url: string;
   expiresAt: string | null;
@@ -627,6 +700,8 @@ export interface CheckoutSession {
   region: string | null;
   city: string | null;
   invoice: string | null;
+  /** The subscription the session created, once it has. */
+  subscription: string | null;
   couponEnabled: boolean;
   couponCode: string | null;
   items: CheckoutSessionItem[];
@@ -648,6 +723,11 @@ export interface CreateCheckoutSessionParams {
   cancelUrl?: string | null;
   billingAddressCollection?: BillingAddressCollection;
   couponEnabled?: boolean;
+  subscriptionData?: CheckoutSessionSubscriptionDataParams;
+  /**
+   * @default 'always'. With a trial, `always` needs `card` among `paymentMethods`.
+   */
+  paymentMethodCollection?: PaymentMethodCollection;
   expiresAt?: string | null;
 }
 
@@ -664,10 +744,72 @@ export interface ListCheckoutSessionsParams extends ListParams {
   customer?: string;
 }
 
-export interface ConfirmCheckoutSessionParams {
+/**
+ * A card to keep for the subscription when nothing is charged today (a trial
+ * covers every item). A card already tokenized through `cards.create`.
+ */
+export interface ConfirmPaymentMethodParams {
+  type: 'card';
+  card: string;
+}
+
+interface ConfirmCheckoutSessionBase {
   customer: string | CustomerInput;
   bumps?: string[];
-  payment: PayInvoiceParams;
+}
+
+/** An amount is due today: pay it with `charge`. */
+export interface ConfirmCheckoutSessionWithCharge extends ConfirmCheckoutSessionBase {
+  charge: PayInvoiceParams;
+  paymentMethod?: never;
+}
+
+/**
+ * Nothing is due today: no charge and no invoice are created, so send no
+ * `charge`. `paymentMethod` is required when `paymentMethodCollection` is
+ * `always` and optional under `if_required`.
+ */
+export interface ConfirmCheckoutSessionWithPaymentMethod extends ConfirmCheckoutSessionBase {
+  charge?: never;
+  paymentMethod?: ConfirmPaymentMethodParams;
+}
+
+export type ConfirmCheckoutSessionParams =
+  | ConfirmCheckoutSessionWithCharge
+  | ConfirmCheckoutSessionWithPaymentMethod;
+
+/** An invoice payment on a confirm response: `charge` is the charge itself when it was created by the call. */
+export interface ConfirmedInvoicePayment extends Omit<InvoicePayment, 'charge'> {
+  charge: string | Charge;
+}
+
+export interface ConfirmedInvoice extends Omit<Invoice, 'payments'> {
+  payments: ConfirmedInvoicePayment[];
+}
+
+/**
+ * What `checkoutSessions.confirm` returns: the session, with the paying
+ * `customer` expanded and the `charge` and `invoice` the call created. `charge`
+ * and `invoice` are `null` when nothing was due today.
+ */
+export interface ConfirmCheckoutSessionResponse extends Omit<CheckoutSession, 'customer' | 'invoice'> {
+  customer: Customer;
+  charge: Charge | null;
+  invoice: ConfirmedInvoice | null;
+}
+
+/** Opens a 3D Secure session for the checkout. The amount comes from the session, never from you. */
+export interface CreateCheckoutThreeDSecureSessionParams {
+  /** UUID of a card tokenized through `cards.create`. */
+  card: string;
+  /** 1 to 12. Defaults to 1. */
+  installments?: number;
+  /** A customer UUID, or the payer's data. */
+  customer: string | CustomerInput;
+  /** Ids of the session's bumps the payer accepted. */
+  bumps?: string[];
+  /** Sandbox only: always show the bank challenge. */
+  forceChallenge?: boolean;
 }
 
 export interface ApplyCouponParams {
@@ -755,6 +897,8 @@ export interface PaymentLink {
   billingAddressCollection: BillingAddressCollection;
   successUrl: string | null;
   cancelUrl: string | null;
+  subscriptionData: PaymentLinkSubscriptionData;
+  paymentMethodCollection: PaymentMethodCollection;
   items: PaymentLinkItem[];
   bumps: PaymentLinkBump[];
   createdAt: string;
@@ -792,6 +936,8 @@ export interface CreatePaymentLinkParams {
   billingAddressCollection?: BillingAddressCollection;
   successUrl?: string | null;
   cancelUrl?: string | null;
+  subscriptionData?: PaymentLinkSubscriptionDataParams;
+  paymentMethodCollection?: PaymentMethodCollection;
   items: CreatePaymentLinkItemParams[];
   bumps?: CreatePaymentLinkBumpParams[];
 }
@@ -806,6 +952,8 @@ export interface UpdatePaymentLinkParams {
   cancelUrl?: string | null;
   active?: boolean;
   couponEnabled?: boolean;
+  subscriptionData?: PaymentLinkSubscriptionDataParams;
+  paymentMethodCollection?: PaymentMethodCollection;
 }
 
 export interface ListPaymentLinksParams extends ListParams {
@@ -925,7 +1073,9 @@ export interface TransferLookup {
   pixKeyType?: string | number;
   accountDigit?: string | null;
   hash?: string;
+  /** Hash lookups only. A decimal string in reais straight from the QR code, not cents. */
   originalValue?: string;
+  /** Hash lookups only. A decimal string in reais, not cents. */
   finalValue?: string;
   dueDate?: string | null;
   description?: string | null;
@@ -933,9 +1083,20 @@ export interface TransferLookup {
 
 export interface TransferParty {
   name: string;
+  /** Digits only on `from` and in webhook payloads. On `to` in API responses it is formatted (`123.456.789-09`). */
   taxNumber: string;
   bankName: string;
 }
+
+export type TransactionSourceType =
+  | 'transfer'
+  | 'charge'
+  | 'charge_split'
+  | 'ted_in'
+  | 'refund'
+  | 'refund_reversal'
+  | 'dispute'
+  | 'dispute_release';
 
 export interface TransferTransaction {
   id: string;
@@ -944,7 +1105,7 @@ export interface TransferTransaction {
   description: string | null;
   endToEndId: string | null;
   availableAt: string;
-  source: { type: string; id: string };
+  source: { type: TransactionSourceType; id: string };
   createdAt: string;
 }
 
@@ -1015,6 +1176,8 @@ export const WebhookEvent = {
   SUBSCRIPTION_CANCELED: 'subscription.canceled',
   SUBSCRIPTION_PAST_DUE: 'subscription.past_due',
   SUBSCRIPTION_TRIALING: 'subscription.trialing',
+  /** Three days before a trial ends. */
+  SUBSCRIPTION_TRIAL_ENDING: 'subscription.trial_ending',
   SUBSCRIPTION_INCOMPLETE: 'subscription.incomplete',
   SUBSCRIPTION_PAUSED: 'subscription.paused',
   SUBSCRIPTION_VOID: 'subscription.void',
@@ -1032,6 +1195,15 @@ export const WebhookEvent = {
 
 export type WebhookEvent = (typeof WebhookEvent)[keyof typeof WebhookEvent];
 
+/** The JSON body of a delivery, sent with `X-Webhook-Id`, `X-Webhook-Event` and `X-Webhook-Signature` headers. */
+export interface WebhookDeliveryPayload<T = Record<string, unknown>> {
+  id: string;
+  event: WebhookEvent;
+  createdAt: string;
+  /** The resource the event is about, in the same shape the API returns. Related entities appear as ids. */
+  data: T;
+}
+
 export interface Webhook {
   id: string;
   description: string | null;
@@ -1039,6 +1211,7 @@ export interface Webhook {
   url: string;
   headers: Record<string, string>;
   events: WebhookEvent[];
+  /** The signing secret (`whsec_…`). Returned on every read. */
   secret: string;
   createdAt: string;
   updatedAt: string;
@@ -1069,6 +1242,7 @@ export interface WebhookLog {
   method: string;
   url: string;
   statusCode: number | null;
+  /** Milliseconds the delivery took. */
   duration: number | null;
   request: string;
   response: string | null;

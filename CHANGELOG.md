@@ -8,7 +8,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Trial on payment links and checkout sessions. `paymentLinks.create` / `update` and `checkoutSessions.create` take `subscriptionData: { trial: { interval, intervalCount }, trialSettings: { endBehavior: { missingPaymentMethod } } }` (`interval` is `day`, `week` or `month`, up to 730 days; `missingPaymentMethod` is `create_invoice` by default or `cancel`) and `paymentMethodCollection` (`always` by default, or `if_required`). A session also takes an absolute `subscriptionData.trialEnd` (at least 48 hours ahead) instead of `trial`. Links and sessions return the same fields; a session also returns `subscription` once one is created. Needs a recurring item.
+- `checkoutSessions.confirm` accepts `paymentMethod: { type: 'card', card }` instead of `charge` when nothing is due today. It keeps the card for the first charge after the trial. Under `paymentMethodCollection: 'if_required'` the body may carry neither. No charge and no invoice are created.
+- `Subscription.trialEndBehavior`, the `missing_payment_method` cancellation reason (set by Upag, not accepted on cancel) and the `subscription.trial_ending` webhook event, sent three days before a trial ends.
 - `upag.webhooks.validateSignature(payload, signature, secret)` to verify inbound deliveries against the webhook signing secret
+
+### Fixed
+- `checkoutSessions.confirm` sends `charge`, the field the API reads. The type and README said `payment`.
 
 ## [2.0.0] - 2026-10-06
 

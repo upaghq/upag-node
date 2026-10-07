@@ -200,11 +200,77 @@ describe('catalog', () => {
   it('confirms a checkout session', async () => {
     await upag().checkoutSessions.confirm('ses-1', {
       customer: customerInput,
-      payment: { method: 'pix' },
+      charge: { method: 'pix' },
     });
     expect(sent[0].url).toBe('https://api.upag.dev/v1/checkout/sessions/ses-1/confirm');
     expect(sent[0].data.customer.document).toEqual({ type: 'cpf', number: '12345678909' });
-    expect(sent[0].data.payment).toEqual({ method: 'pix' });
+    expect(sent[0].data.charge).toEqual({ method: 'pix' });
+  });
+
+  it('confirms a trial session with nothing due today by keeping a card', async () => {
+    await upag().checkoutSessions.confirm('ses-1', {
+      customer: 'cus-1',
+      paymentMethod: { type: 'card', card: 'card-1' },
+    });
+    expect(sent[0].url).toBe('https://api.upag.dev/v1/checkout/sessions/ses-1/confirm');
+    expect(sent[0].data).toEqual({ customer: 'cus-1', paymentMethod: { type: 'card', card: 'card-1' } });
+    expect(sent[0].data.charge).toBeUndefined();
+  });
+
+  it('opens a 3D Secure session for a checkout session', async () => {
+    reply = { status: 201, data: { id: 's1', clientSecret: 'cs_1' } };
+    const created = await upag().checkoutSessions.createThreeDSecureSession('ses-1', {
+      card: 'card-1',
+      customer: 'cus-1',
+      installments: 2,
+    });
+    expect(sent[0].method).toBe('post');
+    expect(sent[0].url).toBe('https://api.upag.dev/v1/checkout/sessions/ses-1/3ds/session');
+    expect(sent[0].data).toEqual({ card: 'card-1', customer: 'cus-1', installments: 2 });
+    expect(created.clientSecret).toBe('cs_1');
+  });
+
+  it('returns the scheduled change when a subscription item removal is deferred', async () => {
+    reply = { status: 200, data: { id: 'chg-1', operation: 'remove' } };
+    const change = await upag().subscriptions.deleteItem('sub-1', 'item-1', { applyAt: 'period_end' });
+    expect(sent[0].method).toBe('delete');
+    expect(sent[0].url).toBe('https://api.upag.dev/v1/subscriptions/sub-1/items/item-1?applyAt=period_end');
+    expect(change).toEqual({ id: 'chg-1', operation: 'remove' });
+  });
+
+  it('resolves with undefined when a subscription item removal is applied now', async () => {
+    reply = { status: 204, data: '' };
+    expect(await upag().subscriptions.deleteItem('sub-1', 'item-1')).toBeUndefined();
+  });
+
+  it('creates a checkout session with a trial', async () => {
+    await upag().checkoutSessions.create({
+      items: [{ price: 'price-1', quantity: 1 }],
+      subscriptionData: {
+        trial: { interval: 'day', intervalCount: 14 },
+        trialSettings: { endBehavior: { missingPaymentMethod: 'cancel' } },
+      },
+      paymentMethodCollection: 'if_required',
+    });
+    expect(sent[0].url).toBe('https://api.upag.dev/v1/checkout/sessions');
+    expect(sent[0].data.subscriptionData).toEqual({
+      trial: { interval: 'day', intervalCount: 14 },
+      trialSettings: { endBehavior: { missingPaymentMethod: 'cancel' } },
+    });
+    expect(sent[0].data.paymentMethodCollection).toBe('if_required');
+  });
+
+  it('creates a payment link with a trial and removes it with null', async () => {
+    await upag().paymentLinks.create({
+      name: 'Trial',
+      items: [{ price: 'price-1', quantity: 1 }],
+      subscriptionData: { trial: { interval: 'week', intervalCount: 2 } },
+    });
+    expect(sent[0].data.subscriptionData).toEqual({ trial: { interval: 'week', intervalCount: 2 } });
+
+    await upag().paymentLinks.update('link-1', { subscriptionData: { trial: null } });
+    expect(sent[1].method).toBe('patch');
+    expect(sent[1].data.subscriptionData).toEqual({ trial: null });
   });
 });
 

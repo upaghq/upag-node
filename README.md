@@ -169,7 +169,7 @@ const session = await upag.checkoutSessions.create({
 
 await upag.checkoutSessions.confirm(session.id, {
   customer: customer.id,
-  payment: { method: 'pix' },
+  charge: { method: 'pix' },
 });
 
 const link = await upag.paymentLinks.create({
@@ -177,6 +177,37 @@ const link = await upag.paymentLinks.create({
   items: [{ price: price.id, quantity: 1 }],
 });
 ```
+
+#### Free trial
+
+A trial belongs to the offer (link or session), not to the price. It needs at least one recurring item. Nothing is charged today for recurring items; one-time items are charged as usual.
+
+```typescript
+// A link holds a relative trial; each session counts it from when the subscription is created.
+await upag.paymentLinks.create({
+  name: 'Plan with trial',
+  items: [{ price: monthlyPrice.id, quantity: 1 }],
+  subscriptionData: {
+    trial: { interval: 'day', intervalCount: 14 }, // day ≤ 730, week ≤ 104, month ≤ 24
+    trialSettings: { endBehavior: { missingPaymentMethod: 'cancel' } }, // or 'create_invoice' (default)
+  },
+  paymentMethodCollection: 'always', // or 'if_required'
+});
+
+// A session can also end the trial on a fixed date (at least 48 hours ahead), instead of `trial`.
+const session = await upag.checkoutSessions.create({
+  items: [{ price: monthlyPrice.id, quantity: 1 }],
+  subscriptionData: { trialEnd: Math.floor(Date.now() / 1000) + 10 * 86400 },
+});
+
+// Nothing is due today, so confirm with a card to keep instead of a charge.
+await upag.checkoutSessions.confirm(session.id, {
+  customer: customer.id,
+  paymentMethod: { type: 'card', card: card.id },
+});
+```
+
+When the trial ends the subscription charges the card on file. With no card, `create_invoice` bills by Pix and `cancel` cancels the subscription with reason `missing_payment_method`. The `subscription.trial_ending` webhook is sent three days before the end.
 
 ### Transfers and webhooks
 

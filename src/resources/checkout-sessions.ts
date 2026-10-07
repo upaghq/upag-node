@@ -6,6 +6,9 @@ import {
   UpdateCheckoutSessionParams,
   ListCheckoutSessionsParams,
   ConfirmCheckoutSessionParams,
+  ConfirmCheckoutSessionResponse,
+  CreateCheckoutThreeDSecureSessionParams,
+  CreatedThreeDSecureSession,
   ApplyCouponParams,
   ListResponse,
 } from '../types';
@@ -37,8 +40,27 @@ export class CheckoutSessions extends BaseResource {
     );
   }
 
-  async confirm(id: string, params: ConfirmCheckoutSessionParams): Promise<CheckoutSession> {
-    return this.http.post<CheckoutSession>(`${this.basePath}/${id}/confirm`, params);
+  /**
+   * Pays the session. The response is the session with the paying `customer` expanded and
+   * the `charge` and `invoice` the call created.
+   */
+  async confirm(
+    id: string,
+    params: ConfirmCheckoutSessionParams
+  ): Promise<ConfirmCheckoutSessionResponse> {
+    return this.http.post<ConfirmCheckoutSessionResponse>(`${this.basePath}/${id}/confirm`, params);
+  }
+
+  /**
+   * Opens a 3D Secure session for the checkout. The amount comes from the session (items,
+   * accepted bumps and coupon). Pass the completed session as `charge.threeDSecureSession`
+   * when you confirm. Answers 404 while 3D Secure is not enabled for the account.
+   */
+  async createThreeDSecureSession(
+    id: string,
+    params: CreateCheckoutThreeDSecureSessionParams
+  ): Promise<CreatedThreeDSecureSession> {
+    return this.http.post<CreatedThreeDSecureSession>(`${this.basePath}/${id}/3ds/session`, params);
   }
 
   async applyCoupon(id: string, params: ApplyCouponParams): Promise<CheckoutSession> {

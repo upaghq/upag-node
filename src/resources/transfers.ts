@@ -32,7 +32,7 @@ export class Transfers extends BaseResource {
     return this.http.get<ListResponse<Transfer>>(`${this.basePath}${this.buildQueryString(params)}`);
   }
 
-  /** Receipt HTML. Pass `format: 'image'` for the image variant. */
+  /** Receipt HTML. `format` is `image` by default; `pdf` opens the print dialog. */
   async receipt(id: string, params?: { format?: ReceiptFormat }): Promise<string> {
     return this.http.get<string>(`${this.basePath}/${id}/receipt${this.buildQueryString(params)}`);
   }

@@ -56,14 +56,19 @@ export class Subscriptions extends BaseResource {
     return this.http.patch(`${this.basePath}/${subscriptionId}/items/${itemId}`, params);
   }
 
+  /**
+   * Remove an item. Resolves with the scheduled change when `applyAt` is `period_end`,
+   * and with `undefined` when the removal was applied now.
+   */
   async deleteItem(
     subscriptionId: string,
     itemId: string,
     params?: DeleteSubscriptionItemParams
-  ): Promise<void> {
-    await this.http.delete(
+  ): Promise<SubscriptionScheduledChange | undefined> {
+    const change = await this.http.delete<SubscriptionScheduledChange | ''>(
       `${this.basePath}/${subscriptionId}/items/${itemId}${this.buildQueryString(params)}`
     );
+    return change ? change : undefined;
   }
 
   async listScheduledChanges(

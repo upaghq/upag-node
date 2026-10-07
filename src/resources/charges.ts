@@ -14,12 +14,13 @@ export class Charges extends BaseResource {
 
   /**
    * Create a Pix or card charge. For a card charge authenticated with 3D Secure, pass the
-   * completed session as `threeDSecureSession`.
+   * completed session as `threeDSecureSession`. A failed card charge carries a `failureCode`.
    */
   async create(params: CreateChargeParams): Promise<Charge> {
     return this.http.post<Charge>(this.basePath, params);
   }
 
+  /** Always includes `items`. Add `includes: 'customer'` to expand the customer. */
   async retrieve(id: string, params?: Pick<ListChargesParams, 'includes'>): Promise<Charge> {
     return this.http.get<Charge>(`${this.buildUrl(id)}${this.buildQueryString(params)}`);
   }
