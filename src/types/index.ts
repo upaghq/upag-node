@@ -3,6 +3,8 @@ export interface UpagConfig {
   timeout?: number;
   /** Overrides the host inferred from the key (`sk_test_` → sandbox). */
   baseURL?: string;
+  /** Appended to the `User-Agent` after `upag-node/<version>`, e.g. `my-app/1.2.0`. */
+  userAgent?: string;
 }
 
 export interface ListResponse<T> {

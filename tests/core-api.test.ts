@@ -76,6 +76,15 @@ describe('base URL', () => {
   });
 });
 
+describe('config', () => {
+  it('appends userAgent to the User-Agent header only when given', async () => {
+    await new Upag({ apiKey: 'sk_test_x', userAgent: 'my-app/1.2.0' }).me.retrieve();
+    await new Upag({ apiKey: 'sk_test_x' }).me.retrieve();
+    expect(sent[0].headers['User-Agent']).toBe('upag-node/2.0.0 my-app/1.2.0');
+    expect(sent[1].headers['User-Agent']).toBe('upag-node/2.0.0');
+  });
+});
+
 describe('cards', () => {
   it('sends the Idempotency-Key header only when given', async () => {
     const upag = new Upag({ apiKey: 'sk_test_x' });

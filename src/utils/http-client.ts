@@ -12,7 +12,7 @@ export class HttpClient {
       headers: {
         'Authorization': `Bearer ${config.apiKey}`,
         'Content-Type': 'application/json',
-        'User-Agent': 'upag-node/2.0.0',
+        'User-Agent': config.userAgent ? `upag-node/2.0.0 ${config.userAgent}` : 'upag-node/2.0.0',
       },
     });
 
