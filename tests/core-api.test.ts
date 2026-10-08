@@ -135,6 +135,21 @@ describe('charges', () => {
     expect(sent[0].data.threeDSecureSession).toBe('s1');
   });
 
+  it('sends Idempotency-Key on create only when given', async () => {
+    const upag = new Upag({ apiKey: 'sk_test_x' });
+    const params = {
+      type: 'pix' as const,
+      amount: 1000,
+      customer: 'cus-1',
+      meta: { order_id: 'order-1' },
+    };
+    await upag.charges.create(params, { idempotencyKey: 'order-1' });
+    await upag.charges.create(params);
+    expect(sent[0].headers['Idempotency-Key']).toBe('order-1');
+    expect(sent[1].headers['Idempotency-Key']).toBeUndefined();
+    expect(sent[0].data).toEqual(params);
+  });
+
   it('passes includes on retrieve and list', async () => {
     const upag = new Upag({ apiKey: 'sk_test_x' });
     await upag.charges.retrieve('ch1', { includes: 'customer' });
