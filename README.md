@@ -59,8 +59,21 @@ const charge = await upag.charges.create({
 
 await upag.charges.retrieve(charge.id, { includes: 'customer' });
 await upag.charges.list({ limit: 20, includes: 'items' });
-await upag.cards.list({ customer: 'customer-uuid' });
-await upag.cards.remove(card.id);
+await upag.charges.list({ customer: 'customer-uuid' });
+```
+
+A card is created without a customer. Everything else about a card lives under its customer, with a secret key:
+
+```typescript
+// Attach on creation (a publishable key ignores `customer`)
+await upag.cards.create({ ...cardData, customer: 'customer-uuid' });
+
+// Or attach later. Idempotent for the same customer; another customer's card is a 409 `card_already_attached`.
+await upag.customers.cards.attach('customer-uuid', { card: card.id });
+
+await upag.customers.cards.list('customer-uuid', { limit: 20 });
+await upag.customers.cards.retrieve('customer-uuid', card.id);
+await upag.customers.cards.delete('customer-uuid', card.id); // soft delete: no longer listed or chargeable
 ```
 
 Pix charge with an inline customer:
