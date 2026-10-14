@@ -1,61 +1,91 @@
+import crypto from 'crypto';
 import { BaseResource } from './base-resource';
+import { HttpClient } from '../utils/http-client';
 import {
   Webhook,
+  WebhookLog,
   CreateWebhookParams,
   UpdateWebhookParams,
   ListWebhooksParams,
   ListResponse,
 } from '../types';
 
-export class Webhooks extends BaseResource {
-  constructor(http: any) {
+export class WebhookLogs extends BaseResource {
+  constructor(http: HttpClient) {
     super(http, '/webhooks');
   }
 
-  /**
-   * Create a new webhook endpoint
-   * @param params - Webhook creation parameters
-   * @returns The created webhook
-   */
+  async list(webhookId: string): Promise<ListResponse<WebhookLog>> {
+    return this.http.get<ListResponse<WebhookLog>>(`${this.basePath}/${webhookId}/logs`);
+  }
+
+  async retrieve(webhookId: string, logId: string): Promise<WebhookLog> {
+    return this.http.get<WebhookLog>(`${this.basePath}/${webhookId}/logs/${logId}`);
+  }
+
+  async reprocess(webhookId: string, logId: string): Promise<WebhookLog> {
+    return this.http.post<WebhookLog>(`${this.basePath}/${webhookId}/logs/${logId}/reprocess`);
+  }
+}
+
+export class Webhooks extends BaseResource {
+  public readonly logs: WebhookLogs;
+
+  constructor(http: HttpClient) {
+    super(http, '/webhooks');
+    this.logs = new WebhookLogs(http);
+  }
+
   async create(params: CreateWebhookParams): Promise<Webhook> {
     return this.http.post<Webhook>(this.basePath, params);
   }
 
-  /**
-   * Retrieve a webhook by ID
-   * @param id - Webhook ID
-   * @returns The webhook
-   */
   async retrieve(id: string): Promise<Webhook> {
     return this.http.get<Webhook>(this.buildUrl(id));
   }
 
-  /**
-   * Update a webhook endpoint
-   * @param id - Webhook ID
-   * @param params - Update parameters
-   * @returns The updated webhook
-   */
   async update(id: string, params: UpdateWebhookParams): Promise<Webhook> {
-    return this.http.put<Webhook>(this.buildUrl(id), params);
+    return this.http.patch<Webhook>(this.buildUrl(id), params);
   }
 
-  /**
-   * Delete a webhook endpoint
-   * @param id - Webhook ID
-   * @returns The deleted webhook
-   */
-  async delete(id: string): Promise<Webhook> {
-    return this.http.delete<Webhook>(this.buildUrl(id));
+  async delete(id: string): Promise<void> {
+    await this.http.delete<void>(this.buildUrl(id));
   }
 
-  /**
-   * List all webhook endpoints
-   * @param params - Pagination parameters
-   * @returns List of webhooks
-   */
   async list(params?: ListWebhooksParams): Promise<ListResponse<Webhook>> {
-    const query = this.buildQueryString(params);
-    return this.http.get<ListResponse<Webhook>>(`${this.basePath}${query}`);
+    return this.http.get<ListResponse<Webhook>>(`${this.basePath}${this.buildQueryString(params)}`);
+  }
+
+  /**
+   * Verifies an inbound delivery against the webhook signing secret.
+   * Pass the raw body — do not parse JSON first — and the `X-Webhook-Signature` header.
+   */
+  validateSignature(
+    payload: Buffer | string,
+    signature: string | string[] | undefined,
+    secret: string | undefined
+  ): boolean {
+    if (!secret) {
+      return false;
+    }
+
+    const received = Array.isArray(signature) ? signature[0] : signature;
+    if (!received) {
+      return false;
+    }
+
+    const expected = `sha256=${crypto
+      .createHmac('sha256', secret)
+      .update(payload)
+      .digest('hex')}`;
+
+    const receivedBytes = Buffer.from(received);
+    const expectedBytes = Buffer.from(expected);
+
+    if (receivedBytes.length !== expectedBytes.length) {
+      return false;
+    }
+
+    return crypto.timingSafeEqual(receivedBytes, expectedBytes);
   }
 }

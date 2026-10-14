@@ -1,23 +1,21 @@
 import axios, { AxiosInstance, AxiosError, AxiosRequestConfig } from 'axios';
 import { UpagConfig, UpagError } from '../types';
+import { resolveBaseURL } from './api-base-url';
 
 export class HttpClient {
   private client: AxiosInstance;
 
   constructor(config: UpagConfig) {
-    const baseURL = 'https://api.billing.upag.io/v1';
-    
     this.client = axios.create({
-      baseURL,
+      baseURL: resolveBaseURL(config),
       timeout: config.timeout || 30000,
       headers: {
         'Authorization': `Bearer ${config.apiKey}`,
         'Content-Type': 'application/json',
-        'User-Agent': 'upag-node/1.0.0',
+        'User-Agent': 'upag-node/2.0.0',
       },
     });
 
-    // Response interceptor for error handling
     this.client.interceptors.response.use(
       (response) => response,
       (error: AxiosError) => {
@@ -53,23 +51,23 @@ export class HttpClient {
 
   private handleError(error: AxiosError): UpagError {
     if (error.response) {
-      // Server responded with error
-      const data: any = error.response.data;
+      const raw: any = error.response.data;
+      const data: any = raw?.error && typeof raw.error === 'object' ? raw.error : raw;
       return {
         message: data?.message || error.message,
-        code: data?.code,
+        code: data?.code ?? data?.meta?.errorCode,
         statusCode: error.response.status,
         errors: data?.errors,
+        details: data?.details,
+        meta: data?.meta,
       };
     } else if (error.request) {
-      // Request made but no response
       return {
         message: 'No response received from server',
         code: 'NETWORK_ERROR',
         statusCode: 0,
       };
     } else {
-      // Error setting up request
       return {
         code: 'CLIENT_ERROR',
         statusCode: 0,
@@ -78,4 +76,3 @@ export class HttpClient {
     }
   }
 }
-

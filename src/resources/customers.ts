@@ -1,62 +1,77 @@
 import { BaseResource } from './base-resource';
+import { HttpClient } from '../utils/http-client';
 import {
+  AttachCardParams,
+  Card,
   Customer,
   CreateCustomerParams,
   UpdateCustomerParams,
+  ListCardsParams,
   ListCustomersParams,
   ListResponse,
 } from '../types';
 
-export class Customers extends BaseResource {
-  constructor(http: any) {
+/** The cards of one customer (`/customers/:customerId/cards`). Secret key only. */
+export class CustomerCards extends BaseResource {
+  constructor(http: HttpClient) {
     super(http, '/customers');
   }
 
+  /** Lists the customer's active cards. Cards with no customer are never listed. */
+  async list(customerId: string, params?: ListCardsParams): Promise<ListResponse<Card>> {
+    return this.http.get<ListResponse<Card>>(
+      `${this.basePath}/${customerId}/cards${this.buildQueryString(params)}`
+    );
+  }
+
+  /** Retrieves an active card of the customer. Any other card is a 404. */
+  async retrieve(customerId: string, cardId: string): Promise<Card> {
+    return this.http.get<Card>(`${this.basePath}/${customerId}/cards/${cardId}`);
+  }
+
   /**
-   * Create a new customer
-   * @param params - Customer creation parameters
-   * @returns The created customer
+   * Attaches an existing card. A card with no customer is attached; the same customer again
+   * returns it unchanged; another customer's card is a 409 `card_already_attached`.
    */
+  async attach(customerId: string, params: AttachCardParams): Promise<Card> {
+    return this.http.post<Card>(`${this.basePath}/${customerId}/cards`, params);
+  }
+
+  /**
+   * Removes (soft deletes) an active card of the customer. It is no longer listed, retrievable
+   * or chargeable. The customer's default card is a 409 `card_is_default`; any other card,
+   * including one already removed, is a 404.
+   */
+  async delete(customerId: string, cardId: string): Promise<void> {
+    await this.http.delete<void>(`${this.basePath}/${customerId}/cards/${cardId}`);
+  }
+}
+
+export class Customers extends BaseResource {
+  public readonly cards: CustomerCards;
+
+  constructor(http: HttpClient) {
+    super(http, '/customers');
+    this.cards = new CustomerCards(http);
+  }
+
   async create(params: CreateCustomerParams): Promise<Customer> {
     return this.http.post<Customer>(this.basePath, params);
   }
 
-  /**
-   * Retrieve a customer by ID
-   * @param id - Customer ID
-   * @returns The customer
-   */
   async retrieve(id: string): Promise<Customer> {
     return this.http.get<Customer>(this.buildUrl(id));
   }
 
-  /**
-   * Update a customer
-   * @param id - Customer ID
-   * @param params - Update parameters
-   * @returns The updated customer
-   */
   async update(id: string, params: UpdateCustomerParams): Promise<Customer> {
-    return this.http.put<Customer>(this.buildUrl(id), params);
+    return this.http.patch<Customer>(this.buildUrl(id), params);
   }
 
-  /**
-   * Delete a customer (soft delete)
-   * @param id - Customer ID
-   * @returns The deleted customer
-   */
-  async delete(id: string): Promise<Customer> {
-    return this.http.delete<Customer>(this.buildUrl(id));
+  async delete(id: string): Promise<void> {
+    await this.http.delete<void>(this.buildUrl(id));
   }
 
-  /**
-   * List all customers
-   * @param params - Filtering and pagination parameters
-   * @returns List of customers
-   */
   async list(params?: ListCustomersParams): Promise<ListResponse<Customer>> {
-    const query = this.buildQueryString(params);
-    return this.http.get<ListResponse<Customer>>(`${this.basePath}${query}`);
+    return this.http.get<ListResponse<Customer>>(`${this.basePath}${this.buildQueryString(params)}`);
   }
 }
-
