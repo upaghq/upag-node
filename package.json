@@ -1,6 +1,6 @@
 {
   "name": "upag",
-  "version": "2.0.0",
+  "version": "1.0.5",
   "description": "Official Upag Node.js SDK for the Upag API",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -17,16 +17,16 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/upaghq/upag-node"
+    "url": "git+https://github.com/upaghq/upag-node.git"
   },
   "publishConfig": {
-    "access": "public"
+    "access": "public",
+    "provenance": true
   },
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",
-    "test": "vitest",
-    "prepublishOnly": "npm run build"
+    "test": "vitest"
   },
   "files": [
     "dist",
@@ -45,4 +45,3 @@
     "vitest": "^1.0.0"
   }
 }
-
