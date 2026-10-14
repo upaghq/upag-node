@@ -20,6 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `checkoutSessions.confirm` accepts `paymentMethod: { type: 'card', card }` instead of `charge` when nothing is due today. It keeps the card for the first charge after the trial. Under `paymentMethodCollection: 'if_required'` the body may carry neither. No charge and no invoice are created.
 - `Subscription.trialEndBehavior`, the `missing_payment_method` cancellation reason (set by Upag, not accepted on cancel) and the `subscription.trial_ending` webhook event, sent three days before a trial ends.
 - `upag.webhooks.validateSignature(payload, signature, secret)` to verify inbound deliveries against the webhook signing secret
+- `charges.create(params, { idempotencyKey })` sends the `Idempotency-Key` header. The API does not enforce it on charges yet; reconcile through `meta` before retrying.
 - `userAgent` option on `new Upag({ ... })`, appended to the `User-Agent` header so an integration (for example the Upag MCP server) can be told apart in the API request log.
 
 ### Fixed
