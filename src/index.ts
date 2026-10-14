@@ -1,7 +1,7 @@
 export { Upag } from './client';
 export * from './types';
 
-export { Customers } from './resources/customers';
+export { Customers, CustomerCards } from './resources/customers';
 export { Products } from './resources/products';
 export { Prices } from './resources/prices';
 export { CheckoutSessions } from './resources/checkout-sessions';

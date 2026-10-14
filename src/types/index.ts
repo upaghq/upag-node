@@ -3,6 +3,8 @@ export interface UpagConfig {
   timeout?: number;
   /** Overrides the host inferred from the key (`sk_test_` → sandbox). */
   baseURL?: string;
+  /** Appended to the `User-Agent` after `upag-node/<version>`, e.g. `my-app/1.2.0`. */
+  userAgent?: string;
 }
 
 export interface ListResponse<T> {
@@ -25,7 +27,7 @@ export interface IdempotentRequestOptions {
 export type Currency = 'brl' | 'usd';
 export type BillingType = 'one_time' | 'recurring';
 export type RecurringInterval = 'day' | 'week' | 'month' | 'year';
-export type PaymentMethodType = 'pix' | 'card';
+export type PaymentMethodType = 'pix' | 'card' | 'boleto';
 export type BillingAddressCollection = 'auto' | 'required' | 'none';
 export type ApplyAt = 'now' | 'period_end';
 
@@ -113,11 +115,20 @@ export interface CreateCardParams {
   cvv: string;
   /** Letters and spaces only, 2 to 64 characters (no accents or punctuation). */
   holderName: string;
-}
-
-export interface ListCardsParams extends ListParams {
+  /**
+   * UUID of a customer of your account. With a secret key the card is attached to it on
+   * creation. A publishable key ignores it and creates a card with no customer.
+   */
   customer?: string;
 }
+
+export interface AttachCardParams {
+  /** UUID of the card to attach. */
+  card: string;
+}
+
+/** Pagination of `customers.cards.list`. */
+export type ListCardsParams = ListParams;
 
 export type ThreeDSecureSessionStatus =
   | 'requires_action'
@@ -158,7 +169,7 @@ export interface CreateThreeDSecureSessionParams {
   forceChallenge?: boolean;
 }
 
-export type ChargeType = 'pix' | 'card';
+export type ChargeType = 'pix' | 'card' | 'boleto';
 export type ChargeStatus =
   | 'pending'
   | 'paid'
@@ -306,6 +317,16 @@ export interface Charge {
     authorizationCode: string | null;
     acquirerStatusCode: string | null;
   };
+  boleto?: {
+    barcode: string | null;
+    digitableLine: string | null;
+    pdfUrl: string | null;
+    dueDate: string | null;
+    daysAfterDue: number | null;
+    paidAmount: number | null;
+    paymentDate: string | null;
+    creditDate: string | null;
+  };
   splits: ChargeSplit[];
   ipAddress: string | null;
   paidAt: string | null;
@@ -314,6 +335,8 @@ export interface Charge {
 }
 
 export interface ListChargesParams extends ListParams {
+  /** Only the charges of this customer UUID. An unknown customer returns an empty list. */
+  customer?: string;
   /** `items`, `customer`, or both, comma separated. `retrieve` always returns `items`. */
   includes?: string;
 }
@@ -395,6 +418,11 @@ export interface PayCardParams {
 }
 
 export type PayInvoiceParams = PayPixParams | PayCardParams;
+
+/** The backend sets the due date; the customer needs a full address and phone. On a subscription a new boleto is issued each cycle. */
+export interface PayBoletoParams {
+  method: 'boleto';
+}
 
 export interface InvoiceItemParams {
   price: string;
@@ -760,7 +788,7 @@ interface ConfirmCheckoutSessionBase {
 
 /** An amount is due today: pay it with `charge`. */
 export interface ConfirmCheckoutSessionWithCharge extends ConfirmCheckoutSessionBase {
-  charge: PayInvoiceParams;
+  charge: PayInvoiceParams | PayBoletoParams;
   paymentMethod?: never;
 }
 
@@ -1257,6 +1285,273 @@ export interface MeResource {
   account: string;
   type: ApiKeyType;
   permissions: string[];
+}
+
+export type LegalEntityType = 'individual' | 'company';
+export type LegalEntityStatus = 'active' | 'inactive' | 'under_review' | 'rejected';
+export type AccountStatus = 'pending' | 'active' | 'closed';
+export type PersonMaritalStatus =
+  | 'single'
+  | 'married'
+  | 'divorced'
+  | 'widowed'
+  | 'separated'
+  | 'couple'
+  | 'other'
+  | 'unknown';
+export type PersonGender = 'male' | 'female' | 'unknown';
+export type PersonRole = 'partner' | 'administrator' | 'holder';
+export type LegalEntityLegalNature = 'mei' | 'ltda' | 'sa';
+export type LegalEntityBusinessActivity =
+  | 'payment_gateway'
+  | 'digital_products'
+  | 'saas'
+  | 'ecommerce'
+  | 'professional_services'
+  | 'health_wellness'
+  | 'beauty'
+  | 'education'
+  | 'food_service'
+  | 'retail'
+  | 'events'
+  | 'nonprofit'
+  | 'other';
+export type InterestResponsibility = 'merchant' | 'buyer';
+
+export interface SubAccountAddress {
+  street: string;
+  number: string;
+  complement: string | null;
+  neighborhood: string;
+  city: string;
+  state: string;
+  country: string;
+  zip: string;
+}
+
+export interface PaymentMethodConfigurationInstallmentParams {
+  installmentNumber: number;
+  brand?: CardBrand | null;
+  mdrRateBasisPoints: number;
+  mdrRateFixedAmount?: number;
+  interestRateBasisPoints?: number;
+  interestResponsibility?: InterestResponsibility;
+  settlementDays?: number;
+}
+
+export interface PaymentMethodConfigurationParams {
+  paymentMethodType: PaymentMethodType;
+  installments: PaymentMethodConfigurationInstallmentParams[];
+  name?: string;
+  active?: boolean;
+  settlementBusinessDays?: boolean;
+  acceptInstallments?: boolean;
+  maxInstallments?: number;
+}
+
+interface CreateSubAccountPersonFields {
+  name: string;
+  email: string;
+  document: { type: 'cpf'; number: string };
+  phone: Phone;
+  /** ISO date. */
+  birthDate: string;
+  motherName: string;
+  publicPerson: boolean;
+  maritalStatus?: PersonMaritalStatus;
+  gender?: PersonGender;
+  address: SubAccountAddress;
+}
+
+export interface CreateSubAccountRepresentativeParams extends CreateSubAccountPersonFields {
+  role: PersonRole;
+  ownershipPercentage: number;
+  isLegalRepresentative: boolean;
+}
+
+export interface CreateIndividualSubAccountParams extends CreateSubAccountPersonFields {
+  type: 'individual';
+  paymentMethodConfigurations?: PaymentMethodConfigurationParams[];
+}
+
+export interface CreateCompanySubAccountParams {
+  type: 'company';
+  activity: LegalEntityBusinessActivity;
+  legalName: string;
+  tradingName: string;
+  legalNature: LegalEntityLegalNature;
+  /** ISO date. */
+  constitutionDate: string;
+  email: string;
+  document: { type: 'cnpj'; number: string };
+  phone: Phone;
+  url: string;
+  statementDescriptor: string;
+  monthlyIncome: number;
+  address: SubAccountAddress;
+  representatives: CreateSubAccountRepresentativeParams[];
+  paymentMethodConfigurations?: PaymentMethodConfigurationParams[];
+}
+
+export type CreateSubAccountParams = CreateIndividualSubAccountParams | CreateCompanySubAccountParams;
+
+export interface ListSubAccountsParams {
+  /** @default 20 */
+  limit?: number;
+  /** @default 0 */
+  offset?: number;
+}
+
+export interface SubAccountListResponse {
+  data: SubAccount[];
+  count: number;
+  limit: number;
+  offset: number;
+}
+
+export interface SubAccountLegalEntity {
+  id: string;
+  type: LegalEntityType;
+  status: LegalEntityStatus;
+  documentType: DocumentType;
+  documentNumber: string;
+  legalName: string;
+  tradingName: string | null;
+  email: string;
+  phone: string;
+}
+
+export interface SubAccountBank {
+  id: string;
+  name: string;
+  status: AccountStatus;
+  bankCode: string;
+  branch: string | null;
+  number: string | null;
+  digit: string | null;
+}
+
+export interface SubAccount {
+  id: string;
+  status: AccountStatus;
+  legalEntity: SubAccountLegalEntity;
+  account: SubAccountBank;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SubAccountApiKey {
+  id: string;
+  type: ApiKeyType;
+  /** Plaintext on create and roll only. */
+  secret: string;
+  description: string;
+  permissions: string[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PaymentMethodConfigurationInstallment {
+  installmentNumber: number;
+  brand: CardBrand | null;
+  mdrRateBasisPoints: number;
+  mdrRateFixedAmount: number;
+  interestRateBasisPoints: number;
+  totalRateBasisPoints: number;
+  interestResponsibility: InterestResponsibility;
+  settlementDays: number;
+}
+
+export interface PaymentMethodConfiguration {
+  paymentMethodType: PaymentMethodType;
+  name: string;
+  active: boolean;
+  settlementBusinessDays: boolean;
+  acceptInstallments: boolean;
+  maxInstallments: number;
+  installments: PaymentMethodConfigurationInstallment[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreatedSubAccount extends SubAccount {
+  apiKey: SubAccountApiKey;
+  paymentMethodConfigurations: PaymentMethodConfiguration[];
+}
+
+export type AppType = 'integration' | 'custom';
+export type AppProvider = 'meta' | 'spedy' | 'utmify' | 'trackup' | 'shopify';
+export type AppAppliesTo = 'all' | 'specific';
+export type AppScope = 'public' | 'private';
+
+export interface App {
+  id: string;
+  type: AppType;
+  provider: AppProvider;
+  scope: AppScope;
+  name: string;
+  /** Secrets are masked. */
+  config: Record<string, unknown>;
+  active: boolean;
+  appliesTo: AppAppliesTo;
+  appliesToProducts: string[] | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateAppParams {
+  name: string;
+  type: 'integration';
+  provider: AppProvider;
+  config?: Record<string, unknown>;
+  active?: boolean;
+  appliesTo?: AppAppliesTo;
+  appliesToProducts?: string[] | null;
+}
+
+export type UpdateAppParams = Partial<Omit<CreateAppParams, 'type'>>;
+export type ListAppsParams = ListParams;
+
+export interface AppLog {
+  id: string;
+  app: string;
+  event: string;
+  method: string;
+  url: string;
+  statusCode: number | null;
+  duration: number | null;
+  request: string;
+  response: string | null;
+  success: boolean;
+  createdAt: string;
+}
+
+export type ListAppLogsParams = ListParams;
+
+export interface CheckoutPublicApp {
+  type: AppType;
+  provider: AppProvider;
+  /** Public keys only. No credentials. */
+  config: Record<string, unknown>;
+}
+
+export interface CheckoutPublicAppsResponse {
+  data: CheckoutPublicApp[];
+}
+
+export type ShopifyScriptVerificationStatus =
+  | 'ok'
+  | 'not_installed'
+  | 'stale_src'
+  | 'duplicated'
+  | 'unreachable';
+
+export interface VerifyAppScriptResult {
+  status: ShopifyScriptVerificationStatus;
+  installed: boolean;
+  expectedSrc: string;
+  found: Array<{ id: string; src: string }>;
+  reachability: { ok: boolean; status: number | null; reason: string | null };
 }
 
 export interface UpagError {

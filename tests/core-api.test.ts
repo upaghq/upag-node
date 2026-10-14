@@ -47,13 +47,13 @@ const customerInput = {
 
 describe('base URL', () => {
   it('uses production for a live key', async () => {
-    await new Upag({ apiKey: 'sk_live_x' }).cards.retrieve('c1');
-    expect(sent[0].url).toBe('https://api.upag.io/v1/cards/c1');
+    await new Upag({ apiKey: 'sk_live_x' }).customers.retrieve('c1');
+    expect(sent[0].url).toBe('https://api.upag.io/v1/customers/c1');
   });
 
   it('uses sandbox for a test key', async () => {
-    await new Upag({ apiKey: 'sk_test_x' }).cards.retrieve('c1');
-    expect(sent[0].url).toBe('https://api.upag.dev/v1/cards/c1');
+    await new Upag({ apiKey: 'sk_test_x' }).customers.retrieve('c1');
+    expect(sent[0].url).toBe('https://api.upag.dev/v1/customers/c1');
   });
 
   it('lets baseURL override the key prefix', async () => {
@@ -76,6 +76,15 @@ describe('base URL', () => {
   });
 });
 
+describe('config', () => {
+  it('appends userAgent to the User-Agent header only when given', async () => {
+    await new Upag({ apiKey: 'sk_test_x', userAgent: 'my-app/1.2.0' }).me.retrieve();
+    await new Upag({ apiKey: 'sk_test_x' }).me.retrieve();
+    expect(sent[0].headers['User-Agent']).toBe('upag-node/2.0.0 my-app/1.2.0');
+    expect(sent[1].headers['User-Agent']).toBe('upag-node/2.0.0');
+  });
+});
+
 describe('cards', () => {
   it('sends the Idempotency-Key header only when given', async () => {
     const upag = new Upag({ apiKey: 'sk_test_x' });
@@ -93,14 +102,70 @@ describe('cards', () => {
     expect(sent[0].data).toEqual(params);
   });
 
-  it('lists with a query string and removes by id', async () => {
+  it('creates a card already attached to a customer', async () => {
     const upag = new Upag({ apiKey: 'sk_test_x' });
-    await upag.cards.list({ customer: 'cus', page: 2, limit: 5 });
-    await upag.cards.remove('c1');
-    expect(sent[0].url).toContain('https://api.upag.dev/v1/cards?');
-    expect(sent[0].url).toContain('customer=cus');
+    const params = {
+      number: '4111111111111111',
+      expirationMonth: 12,
+      expirationYear: 2030,
+      cvv: '737',
+      holderName: 'Maria Silva',
+      customer: 'cus',
+    };
+    await upag.cards.create(params);
+    expect(sent[0].url).toBe('https://api.upag.dev/v1/cards');
+    expect(sent[0].data).toEqual(params);
+  });
+
+  it('only tokenizes at the root: the flat read and delete routes are gone', () => {
+    const upag = new Upag({ apiKey: 'sk_test_x' });
+    expect(upag.cards).not.toHaveProperty('list');
+    expect(upag.cards).not.toHaveProperty('retrieve');
+    expect(upag.cards).not.toHaveProperty('remove');
+  });
+});
+
+describe('customers.cards', () => {
+  it('lists with a query string under the customer', async () => {
+    const upag = new Upag({ apiKey: 'sk_test_x' });
+    await upag.customers.cards.list('cus', { page: 2, limit: 5 });
+    expect(sent[0].method).toBe('get');
+    expect(sent[0].url).toContain('https://api.upag.dev/v1/customers/cus/cards?');
+    expect(sent[0].url).toContain('page=2');
     expect(sent[0].url).toContain('limit=5');
-    expect(sent[1].method).toBe('delete');
+  });
+
+  it('retrieves a card of the customer', async () => {
+    const upag = new Upag({ apiKey: 'sk_test_x' });
+    await upag.customers.cards.retrieve('cus', 'c1');
+    expect(sent[0].method).toBe('get');
+    expect(sent[0].url).toBe('https://api.upag.dev/v1/customers/cus/cards/c1');
+  });
+
+  it('attaches a card with the card id in the body', async () => {
+    const upag = new Upag({ apiKey: 'sk_test_x' });
+    await upag.customers.cards.attach('cus', { card: 'c1' });
+    expect(sent[0].method).toBe('post');
+    expect(sent[0].url).toBe('https://api.upag.dev/v1/customers/cus/cards');
+    expect(sent[0].data).toEqual({ card: 'c1' });
+  });
+
+  it('deletes a card of the customer', async () => {
+    const upag = new Upag({ apiKey: 'sk_test_x' });
+    await upag.customers.cards.delete('cus', 'c1');
+    expect(sent[0].method).toBe('delete');
+    expect(sent[0].url).toBe('https://api.upag.dev/v1/customers/cus/cards/c1');
+  });
+
+  it('surfaces card_already_attached as a 409', async () => {
+    reply = {
+      status: 409,
+      data: { error: { code: 'card_already_attached', message: 'Card is already attached to another customer' } },
+    };
+    await expect(new Upag({ apiKey: 'sk_test_x' }).customers.cards.attach('cus', { card: 'c1' })).rejects.toMatchObject({
+      statusCode: 409,
+      code: 'card_already_attached',
+    });
   });
 });
 
@@ -156,6 +221,14 @@ describe('charges', () => {
     await upag.charges.list({ includes: 'items', limit: 10 });
     expect(sent[0].url).toContain('/charges/ch1?includes=customer');
     expect(sent[1].url).toContain('includes=items');
+  });
+
+  it('filters the list by customer', async () => {
+    const upag = new Upag({ apiKey: 'sk_test_x' });
+    await upag.charges.list({ customer: 'cus-1', limit: 10 });
+    await upag.charges.list({ limit: 10 });
+    expect(sent[0].url).toContain('customer=cus-1');
+    expect(sent[1].url).not.toContain('customer=');
   });
 });
 
@@ -373,7 +446,7 @@ describe('error handling', () => {
         },
       },
     };
-    await expect(new Upag({ apiKey: 'sk_test_x' }).cards.retrieve('c')).rejects.toMatchObject({
+    await expect(new Upag({ apiKey: 'sk_test_x' }).customers.cards.retrieve('cus', 'c')).rejects.toMatchObject({
       statusCode: 422,
       code: 'card_invalid',
       message: 'Card is invalid',
