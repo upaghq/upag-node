@@ -24,7 +24,16 @@ branch → PR → CI → merge to main → publish
 
 Any other prefix fails CI. A push to `main` with no associated PR (a direct push) never publishes.
 
-The mapping lives in `.github/scripts/branch-bump.sh`, shared by both workflows.
+The mapping lives in `.github/scripts/branch-bump.sh`, shared by both workflows and the git hooks.
+
+## Git hooks
+
+Hooks live in `.githooks/` and are enabled automatically by `npm install` (the `prepare` script sets `core.hooksPath`; it is skipped when `CI` is set). To enable them without installing: `git config core.hooksPath .githooks`.
+
+- `pre-commit`: refuses commits on `main`/`master` and on branches that don't follow the naming convention above. Detached HEAD (rebase, bisect) is ignored.
+- `pre-push`: refuses pushes to `main`/`master`. This also catches local merges and fast-forwards, which skip `pre-commit`.
+
+Rename a branch with `git branch -m feat/my-change`. In an emergency, `--no-verify` skips the hooks. Branch protection on GitHub is still what actually enforces the rule.
 
 ## Where the version comes from
 

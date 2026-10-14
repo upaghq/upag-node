@@ -26,7 +26,8 @@
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",
-    "test": "vitest"
+    "test": "vitest",
+    "prepare": "[ -n \"$CI\" ] || git config core.hooksPath .githooks || true"
   },
   "files": [
     "dist",
