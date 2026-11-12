@@ -1223,6 +1223,13 @@ export const WebhookEvent = {
 
 export type WebhookEvent = (typeof WebhookEvent)[keyof typeof WebhookEvent];
 
+/** An event a webhook can subscribe to, as `webhookEvents.list` returns it. */
+export interface WebhookEventOption {
+  value: WebhookEvent;
+  /** Display name, in Portuguese. */
+  label: string;
+}
+
 /** The JSON body of a delivery, sent with `X-Webhook-Id`, `X-Webhook-Event` and `X-Webhook-Signature` headers. */
 export interface WebhookDeliveryPayload<T = Record<string, unknown>> {
   id: string;

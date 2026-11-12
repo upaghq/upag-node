@@ -427,6 +427,12 @@ describe('new resources', () => {
     expect(sent[2].url).toBe('https://api.upag.dev/v1/webhooks/wh-1/logs/log-1/reprocess');
   });
 
+  it('lists the webhook events', async () => {
+    await upag().webhookEvents.list();
+    expect(sent[0].method).toBe('get');
+    expect(sent[0].url).toBe('https://api.upag.dev/v1/webhook-events');
+  });
+
   it('retrieves the key identity', async () => {
     await upag().me.retrieve();
     expect(sent[0].url).toBe('https://api.upag.dev/v1/me');

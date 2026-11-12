@@ -239,6 +239,7 @@ const webhook = await upag.webhooks.create({
 });
 
 await upag.webhooks.logs.list(webhook.id);
+await upag.webhookEvents.list(); // { data: [{ value: 'charge.paid', label: '...' }], count }
 await upag.me.retrieve();
 ```
 
