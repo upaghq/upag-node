@@ -12,6 +12,7 @@ export { PaymentLinks } from './resources/payment-links';
 export { Coupons } from './resources/coupons';
 export { Transfers } from './resources/transfers';
 export { Webhooks, WebhookLogs } from './resources/webhooks';
+export { WebhookEvents } from './resources/webhook-events';
 export { Cards } from './resources/cards';
 export { Files } from './resources/files';
 export { Charges } from './resources/charges';

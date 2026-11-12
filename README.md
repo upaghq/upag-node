@@ -189,7 +189,16 @@ const link = await upag.paymentLinks.create({
   name: 'Checkout',
   items: [{ price: price.id, quantity: 1 }],
 });
+
+// A fixed amount link needs no product or price: the payer sees `name` and pays `amount` (cents, at least 500).
+const quickLink = await upag.paymentLinks.create({
+  type: 'fixed_amount',
+  name: 'Consultoria de outubro',
+  amount: 25000,
+});
 ```
+
+Invoices and sessions paid through a fixed amount link carry items with `price` (and, on invoices, `product`) set to `null`; the item's `name` and `amount` describe it.
 
 #### Free trial
 
@@ -251,6 +260,7 @@ const webhook = await upag.webhooks.create({
 });
 
 await upag.webhooks.logs.list(webhook.id);
+await upag.webhookEvents.list(); // { data: [{ value: 'charge.paid', label: '...' }], count }
 await upag.me.retrieve();
 ```
 

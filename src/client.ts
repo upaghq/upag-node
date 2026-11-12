@@ -11,6 +11,7 @@ import { PaymentLinks } from './resources/payment-links';
 import { Coupons } from './resources/coupons';
 import { Transfers } from './resources/transfers';
 import { Webhooks } from './resources/webhooks';
+import { WebhookEvents } from './resources/webhook-events';
 import { Cards } from './resources/cards';
 import { Files } from './resources/files';
 import { Charges } from './resources/charges';
@@ -31,6 +32,7 @@ export class Upag {
   public readonly coupons: Coupons;
   public readonly transfers: Transfers;
   public readonly webhooks: Webhooks;
+  public readonly webhookEvents: WebhookEvents;
   public readonly cards: Cards;
   public readonly files: Files;
   public readonly charges: Charges;
@@ -61,6 +63,7 @@ export class Upag {
     this.coupons = new Coupons(this.http);
     this.transfers = new Transfers(this.http);
     this.webhooks = new Webhooks(this.http);
+    this.webhookEvents = new WebhookEvents(this.http);
     this.cards = new Cards(this.http);
     this.files = new Files(this.http);
     this.charges = new Charges(this.http);
