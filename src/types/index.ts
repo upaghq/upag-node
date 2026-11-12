@@ -894,6 +894,58 @@ export interface CreateCheckoutLayoutParams {
 export type UpdateCheckoutLayoutParams = Partial<CreateCheckoutLayoutParams>;
 export type ListCheckoutLayoutsParams = ListParams;
 
+export type FilePurpose =
+  | 'business_icon'
+  | 'business_logo'
+  | 'product_image'
+  | 'user_profile_picture'
+  | 'checkout_asset'
+  | 'dispute_evidence'
+  | 'identity_document'
+  | 'content_delivery'
+  | 'social_contract'
+  | 'other';
+
+export interface UpagFile {
+  id: string;
+  name: string;
+  /** Bytes stored. Images are resized and recompressed, and SVGs sanitized, so this can be smaller than the original. */
+  size: number;
+  contentType: string;
+  purpose: FilePurpose;
+  /** Public URL of the file. `null` for private purposes. */
+  url: string | null;
+  /** ISO 8601 timestamp, as sent by the API. */
+  createdAt: string;
+}
+
+export interface UploadFileParams {
+  /**
+   * JPEG, PNG, WEBP, PDF or CSV, up to 10 MB, or an SVG for `checkout_asset`. The content is
+   * checked, not the type you declare.
+   */
+  file: Blob | Buffer | Uint8Array;
+  /** Name of the uploaded part. Defaults to the `File`'s own name, or `file`. */
+  filename?: string;
+  purpose: FilePurpose;
+  /** Defaults to the file's own name. Up to 255 characters. */
+  name?: string;
+}
+
+export interface ImportFileParams {
+  /** Public https URL the API downloads the file from, up to 5 MB. Internal addresses are refused. */
+  url: string;
+  purpose: FilePurpose;
+  /** Defaults to the last segment of the URL. Up to 255 characters. */
+  name?: string;
+}
+
+export type CreateFileParams = UploadFileParams | ImportFileParams;
+
+export interface ListFilesParams extends ListParams {
+  purpose?: FilePurpose;
+}
+
 export interface PaymentLinkItem {
   id: string;
   product: string;

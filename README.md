@@ -222,6 +222,18 @@ await upag.checkoutSessions.confirm(session.id, {
 
 When the trial ends the subscription charges the card on file. With no card, `create_invoice` bills by Pix and `cancel` cancels the subscription with reason `missing_payment_method`. The `subscription.trial_ending` webhook is sent three days before the end.
 
+### Files
+
+```typescript
+// Upload bytes (multipart, Node 18+), or let the API download a public https URL
+const logo = await upag.files.create({ file: buffer, filename: 'logo.png', purpose: 'checkout_asset' });
+const banner = await upag.files.create({ url: 'https://example.com/banner.webp', purpose: 'checkout_asset' });
+
+// Public purposes come back with a CDN `url` to use in a checkout layout
+await upag.files.retrieve(logo.id);
+await upag.files.list({ purpose: 'checkout_asset' });
+```
+
 ### Transfers and webhooks
 
 ```typescript
