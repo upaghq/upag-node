@@ -1217,6 +1217,12 @@ export const WebhookEvent = {
   REFUND_PROCESSING: 'refund.processing',
   REFUND_COMPLETED: 'refund.completed',
   REFUND_FAILED: 'refund.failed',
+  BILL_PAYMENT_CREATED: 'bill_payment.created',
+  BILL_PAYMENT_UPDATED: 'bill_payment.updated',
+  BILL_PAYMENT_PAID: 'bill_payment.paid',
+  BILL_PAYMENT_FAILED: 'bill_payment.failed',
+  BILL_PAYMENT_CANCELED: 'bill_payment.canceled',
+  BILL_PAYMENT_REVERSED: 'bill_payment.reversed',
   PAYMENT_CREATED: 'payment.created',
   PAYMENT_INCOMPLETE: 'payment.incomplete',
   PAYMENT_PENDING: 'payment.pending',
@@ -1242,6 +1248,7 @@ export const WebhookEvent = {
   SUBSCRIPTION_INCOMPLETE: 'subscription.incomplete',
   SUBSCRIPTION_PAUSED: 'subscription.paused',
   SUBSCRIPTION_VOID: 'subscription.void',
+  SUBSCRIPTION_ENDED: 'subscription.ended',
   SUBSCRIPTION_UPDATED: 'subscription.updated',
   CHECKOUT_SESSION_CREATED: 'checkout-session.created',
   CHECKOUT_SESSION_OPENED: 'checkout-session.opened',
@@ -1255,6 +1262,13 @@ export const WebhookEvent = {
 } as const;
 
 export type WebhookEvent = (typeof WebhookEvent)[keyof typeof WebhookEvent];
+
+/** An event a webhook can subscribe to, as `webhookEvents.list` returns it. */
+export interface WebhookEventOption {
+  value: WebhookEvent;
+  /** Display name, in Portuguese. */
+  label: string;
+}
 
 /** The JSON body of a delivery, sent with `X-Webhook-Id`, `X-Webhook-Event` and `X-Webhook-Signature` headers. */
 export interface WebhookDeliveryPayload<T = Record<string, unknown>> {
