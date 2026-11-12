@@ -14,6 +14,7 @@ export { Transfers } from './resources/transfers';
 export { Webhooks, WebhookLogs } from './resources/webhooks';
 export { WebhookEvents } from './resources/webhook-events';
 export { Cards } from './resources/cards';
+export { Files } from './resources/files';
 export { Charges } from './resources/charges';
 export { ThreeDSecure } from './resources/three-d-secure';
 export { Me } from './resources/me';

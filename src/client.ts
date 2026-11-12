@@ -13,6 +13,7 @@ import { Transfers } from './resources/transfers';
 import { Webhooks } from './resources/webhooks';
 import { WebhookEvents } from './resources/webhook-events';
 import { Cards } from './resources/cards';
+import { Files } from './resources/files';
 import { Charges } from './resources/charges';
 import { ThreeDSecure } from './resources/three-d-secure';
 import { Me } from './resources/me';
@@ -33,6 +34,7 @@ export class Upag {
   public readonly webhooks: Webhooks;
   public readonly webhookEvents: WebhookEvents;
   public readonly cards: Cards;
+  public readonly files: Files;
   public readonly charges: Charges;
   public readonly threeDSecure: ThreeDSecure;
   public readonly me: Me;
@@ -63,6 +65,7 @@ export class Upag {
     this.webhooks = new Webhooks(this.http);
     this.webhookEvents = new WebhookEvents(this.http);
     this.cards = new Cards(this.http);
+    this.files = new Files(this.http);
     this.charges = new Charges(this.http);
     this.threeDSecure = new ThreeDSecure(this.http);
     this.me = new Me(this.http);

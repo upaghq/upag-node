@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Breaking**: cards are scoped to their customer. `upag.cards` keeps only `create`; `cards.list`, `cards.retrieve` and `cards.remove` are gone, along with the `customer` filter of `ListCardsParams`.
 
 ### Added
+- `upag.files` (`create`, `retrieve`, `list`) over `/files`. `create` uploads a `Blob`/`Buffer` as multipart, or, given a `url`, has the API download the file (public https only, up to 5 MB; secret key only). `list` filters by `purpose`. SVG is accepted, sanitized, for `checkout_asset`. Uploads use the global `FormData` and `Blob`, so they need Node 18+.
 - `upag.webhookEvents.list()` over `GET /webhook-events`: every event a webhook can subscribe to, as `{ value, label }`. Needs `webhook.read`.
 - `WebhookEvent` lists the events the API already sends and the SDK was missing: `bill_payment.created`, `bill_payment.updated`, `bill_payment.paid`, `bill_payment.failed`, `bill_payment.canceled`, `bill_payment.reversed` and `subscription.ended`.
 - Fixed amount payment links. `paymentLinks.create({ type: 'fixed_amount', name, amount })` charges `amount` (cents, BRL, at least 500) with no product, price, items, bumps, trial or coupon. `PaymentLink.type` is `product` or `fixed_amount`; `paymentLinks.update` takes `amount` on a fixed amount link; `paymentLinks.list` filters by `type`.
