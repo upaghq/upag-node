@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Breaking**: cards are scoped to their customer. `upag.cards` keeps only `create`; `cards.list`, `cards.retrieve` and `cards.remove` are gone, along with the `customer` filter of `ListCardsParams`.
 
 ### Added
+- `WebhookEvent` lists the events the API already sends and the SDK was missing: `bill_payment.created`, `bill_payment.updated`, `bill_payment.paid`, `bill_payment.failed`, `bill_payment.canceled`, `bill_payment.reversed` and `subscription.ended`.
 - Fixed amount payment links. `paymentLinks.create({ type: 'fixed_amount', name, amount })` charges `amount` (cents, BRL, at least 500) with no product, price, items, bumps, trial or coupon. `PaymentLink.type` is `product` or `fixed_amount`; `paymentLinks.update` takes `amount` on a fixed amount link; `paymentLinks.list` filters by `type`.
 - `upag.customers.cards` (`list`, `retrieve`, `attach`, `delete`) over `/customers/:customerId/cards`. `attach(customerId, { card })` is idempotent for the same customer and answers `409 card_already_attached` for another customer's card. `delete` soft-deletes an active card of the customer (404 for any other); the card is no longer listed, retrievable or chargeable. The customer's default card is a `409 card_is_default`: change or clear the default first. A subscription that pays with it stops charging it at the next renewal.
 - `cards.create` accepts `customer` (a customer UUID) to attach the card on creation. A publishable key ignores it.
