@@ -8,10 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Changed
+- **Breaking (types)**: `InvoiceItem.product` and `InvoiceItem.price` are `string | null`, and `CheckoutSessionItem.price` is `string | null`. Lines sold through a fixed amount payment link have no catalog price; `invoice.*` webhook payloads carry the same nulls. `CheckoutSessionItem` gains `name` and `amount`, set only when `price` is `null`.
 - **Breaking**: charging a card (`charges.create`, invoice pay, subscriptions) with a card bound to another customer is a `409 card_already_attached`, and a deleted card is a `404`. A card with no customer is still accepted and is attached to the payer once the charge is paid.
 - **Breaking**: cards are scoped to their customer. `upag.cards` keeps only `create`; `cards.list`, `cards.retrieve` and `cards.remove` are gone, along with the `customer` filter of `ListCardsParams`.
 
 ### Added
+- Fixed amount payment links. `paymentLinks.create({ type: 'fixed_amount', name, amount })` charges `amount` (cents, BRL, at least 500) with no product, price, items, bumps, trial or coupon. `PaymentLink.type` is `product` or `fixed_amount`; `paymentLinks.update` takes `amount` on a fixed amount link; `paymentLinks.list` filters by `type`.
 - `upag.customers.cards` (`list`, `retrieve`, `attach`, `delete`) over `/customers/:customerId/cards`. `attach(customerId, { card })` is idempotent for the same customer and answers `409 card_already_attached` for another customer's card. `delete` soft-deletes an active card of the customer (404 for any other); the card is no longer listed, retrievable or chargeable. The customer's default card is a `409 card_is_default`: change or clear the default first. A subscription that pays with it stops charging it at the next renewal.
 - `cards.create` accepts `customer` (a customer UUID) to attach the card on creation. A publishable key ignores it.
 - `charges.list` accepts `customer` (a customer UUID) to list only that customer's charges. An unknown customer returns an empty list.

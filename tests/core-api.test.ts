@@ -374,6 +374,19 @@ describe('new resources', () => {
     expect(sent[0].data.items[0].price).toBe('price-1');
   });
 
+  it('creates a fixed amount payment link and filters by type', async () => {
+    await upag().paymentLinks.create({ type: 'fixed_amount', name: 'Consultoria', amount: 25000 });
+    expect(sent[0].url).toBe('https://api.upag.dev/v1/payment-links');
+    expect(sent[0].data).toEqual({ type: 'fixed_amount', name: 'Consultoria', amount: 25000 });
+
+    await upag().paymentLinks.update('link-1', { amount: 30000 });
+    expect(sent[1].method).toBe('patch');
+    expect(sent[1].data).toEqual({ amount: 30000 });
+
+    await upag().paymentLinks.list({ type: 'fixed_amount' });
+    expect(sent[2].url).toContain('type=fixed_amount');
+  });
+
   it('updates a checkout layout with PATCH', async () => {
     await upag().checkoutLayouts.update('lay-1', { name: 'Dark' });
     expect(sent[0].method).toBe('patch');
