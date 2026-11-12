@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - **Breaking (types)**: `InvoiceItem.product` and `InvoiceItem.price` are `string | null`, and `CheckoutSessionItem.price` is `string | null`. Lines sold through a fixed amount payment link have no catalog price; `invoice.*` webhook payloads carry the same nulls. `CheckoutSessionItem` gains `name` and `amount`, set only when `price` is `null`.
+- **Breaking**: the minimum Node.js version is 22 (`engines.node` is now `>=22.0.0`). Node 16, 18 and 20 are out of support.
 - **Breaking**: charging a card (`charges.create`, invoice pay, subscriptions) with a card bound to another customer is a `409 card_already_attached`, and a deleted card is a `404`. A card with no customer is still accepted and is attached to the payer once the charge is paid.
 - **Breaking**: cards are scoped to their customer. `upag.cards` keeps only `create`; `cards.list`, `cards.retrieve` and `cards.remove` are gone, along with the `customer` filter of `ListCardsParams`.
 

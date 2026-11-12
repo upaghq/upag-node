@@ -318,7 +318,7 @@ Never share your API keys or commit them to version control.
 
 ## Requirements
 
-- Node.js >= 16.0.0
+- Node.js >= 22.0.0
 - npm or yarn
 
 ## Development
