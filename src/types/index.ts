@@ -431,8 +431,9 @@ export interface InvoiceItemParams {
 
 export interface InvoiceItem {
   id: string;
-  product: string;
-  price: string;
+  /** `null` on a line without a catalog price (a `fixed_amount` payment link). */
+  product: string | null;
+  price: string | null;
   name: string;
   amount: number;
   quantity: number;
@@ -684,7 +685,12 @@ export interface CheckoutSessionSubscriptionData extends PaymentLinkSubscription
 
 export interface CheckoutSessionItem {
   id: string;
-  price: string;
+  /** `null` on an item without a catalog price (a `fixed_amount` payment link). */
+  price: string | null;
+  /** Set only when `price` is `null`. */
+  name: string | null;
+  /** Unit amount in cents. Set only when `price` is `null`. */
+  amount: number | null;
   quantity: number;
 }
 
@@ -912,12 +918,17 @@ export interface PaymentLinkBump {
   description: string | null;
 }
 
+/** `product` sells catalog prices (`items`); `fixed_amount` charges its own `amount`. */
+export type PaymentLinkType = 'product' | 'fixed_amount';
+
 export interface PaymentLink {
   id: string;
+  type: PaymentLinkType;
   name: string;
   description: string | null;
   checkoutLayout: string | null;
   active: boolean;
+  /** In cents: the fixed amount, or the sum of the items. */
   amount: number;
   url: string;
   paymentMethods: PaymentMethodType[];
@@ -956,7 +967,7 @@ export interface UpdatePaymentLinkBumpParams {
   description?: string | null;
 }
 
-export interface CreatePaymentLinkParams {
+interface CreatePaymentLinkBaseParams {
   name: string;
   description?: string | null;
   checkoutLayout?: string | null;
@@ -964,11 +975,28 @@ export interface CreatePaymentLinkParams {
   billingAddressCollection?: BillingAddressCollection;
   successUrl?: string | null;
   cancelUrl?: string | null;
+}
+
+/** A link that sells catalog prices. `type` may be omitted. */
+export interface CreateProductPaymentLinkParams extends CreatePaymentLinkBaseParams {
+  type?: 'product';
   subscriptionData?: PaymentLinkSubscriptionDataParams;
   paymentMethodCollection?: PaymentMethodCollection;
   items: CreatePaymentLinkItemParams[];
   bumps?: CreatePaymentLinkBumpParams[];
 }
+
+/**
+ * A link that charges a fixed amount, with no product or price: no items, bumps,
+ * trial or coupon. `name` is what the payer sees on the line.
+ */
+export interface CreateFixedAmountPaymentLinkParams extends CreatePaymentLinkBaseParams {
+  type: 'fixed_amount';
+  /** In cents, BRL. At least 500 (R$ 5,00). */
+  amount: number;
+}
+
+export type CreatePaymentLinkParams = CreateProductPaymentLinkParams | CreateFixedAmountPaymentLinkParams;
 
 export interface UpdatePaymentLinkParams {
   name?: string;
@@ -982,12 +1010,17 @@ export interface UpdatePaymentLinkParams {
   couponEnabled?: boolean;
   subscriptionData?: PaymentLinkSubscriptionDataParams;
   paymentMethodCollection?: PaymentMethodCollection;
+  /** Only on a `fixed_amount` link. In cents, at least 500. */
+  amount?: number;
+  /** The type cannot change; sending a different one is refused. */
+  type?: PaymentLinkType;
 }
 
 export interface ListPaymentLinksParams extends ListParams {
   name?: string;
   active?: boolean;
   product?: string;
+  type?: PaymentLinkType;
 }
 
 export type CouponType = 'percentage' | 'fixed';
