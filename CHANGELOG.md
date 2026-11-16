@@ -14,6 +14,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Breaking**: cards are scoped to their customer. `upag.cards` keeps only `create`; `cards.list`, `cards.retrieve` and `cards.remove` are gone, along with the `customer` filter of `ListCardsParams`.
 
 ### Added
+- Billing portal. `upag.billingPortal.configurations` (`create`, `retrieve`, `update`, `list`) over `/billing-portal/configurations` and `upag.billingPortal.sessions.create` over `/billing-portal/sessions`, which returns the portal `url` once. Secret key only, with the `billing_portal.read` / `billing_portal.write` permissions; the account needs the portal enabled.
+- `upag.portal` (`me`, `attachCard`, `updatePaymentMethod`, `previewSubscriptionUpdate`, `updateSubscription`) over `/portal`, the customer side of the portal. Build the client with the session token as `apiKey` and pass `baseURL` for the sandbox. `updateSubscription` takes `{ idempotencyKey }`.
+- `WebhookEvent` gains `billing_portal.session.created`, and `WebhookDeliveryPayload` gains `source` (`{ type: 'billing_portal', session }`), set on `subscription.updated` when the customer made the change in the portal.
 - `upag.files` (`create`, `retrieve`, `list`) over `/files`. `create` uploads a `Blob`/`Buffer` as multipart, or, given a `url`, has the API download the file (public https only, up to 5 MB; secret key only). `list` filters by `purpose`. SVG is accepted, sanitized, for `checkout_asset`. Uploads use the global `FormData` and `Blob`, so they need Node 18+.
 - `upag.webhookEvents.list()` over `GET /webhook-events`: every event a webhook can subscribe to, as `{ value, label }`. Needs `webhook.read`.
 - `WebhookEvent` lists the events the API already sends and the SDK was missing: `bill_payment.created`, `bill_payment.updated`, `bill_payment.paid`, `bill_payment.failed`, `bill_payment.canceled`, `bill_payment.reversed` and `subscription.ended`.

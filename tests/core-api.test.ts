@@ -452,6 +452,108 @@ describe('new resources', () => {
   });
 });
 
+describe('billingPortal', () => {
+  const upag = () => new Upag({ apiKey: 'sk_test_x' });
+
+  it('creates a configuration, with or without fields', async () => {
+    const params = {
+      name: 'Plans',
+      subscriptionUpdate: true,
+      products: [{ product: 'prod', prices: ['p1', 'p2'] }],
+    };
+    await upag().billingPortal.configurations.create(params);
+    await upag().billingPortal.configurations.create();
+    expect(sent[0].method).toBe('post');
+    expect(sent[0].url).toBe('https://api.upag.dev/v1/billing-portal/configurations');
+    expect(sent[0].data).toEqual(params);
+    expect(sent[1].data).toEqual({});
+  });
+
+  it('retrieves and updates a configuration by id', async () => {
+    await upag().billingPortal.configurations.retrieve('cfg');
+    await upag().billingPortal.configurations.update('cfg', { prorationBehavior: 'none', name: null });
+    expect(sent[0].method).toBe('get');
+    expect(sent[0].url).toBe('https://api.upag.dev/v1/billing-portal/configurations/cfg');
+    expect(sent[1].method).toBe('patch');
+    expect(sent[1].url).toBe('https://api.upag.dev/v1/billing-portal/configurations/cfg');
+    expect(sent[1].data).toEqual({ prorationBehavior: 'none', name: null });
+  });
+
+  it('lists configurations with pagination', async () => {
+    await upag().billingPortal.configurations.list({ page: 2, limit: 5 });
+    await upag().billingPortal.configurations.list();
+    expect(sent[0].method).toBe('get');
+    expect(sent[0].url).toBe('https://api.upag.dev/v1/billing-portal/configurations?page=2&limit=5');
+    expect(sent[1].url).toBe('https://api.upag.dev/v1/billing-portal/configurations');
+  });
+
+  it('creates a session and returns its url', async () => {
+    reply = { status: 201, data: { id: 'ses', url: 'https://portal.upag.io/tok' } };
+    const params = {
+      customer: 'cus',
+      returnUrl: 'https://example.com/account',
+      flow: { type: 'subscription_update' as const, subscription: 'sub' },
+      expiresIn: 1800,
+    };
+    const session = await upag().billingPortal.sessions.create(params);
+    expect(sent[0].method).toBe('post');
+    expect(sent[0].url).toBe('https://api.upag.dev/v1/billing-portal/sessions');
+    expect(sent[0].data).toEqual(params);
+    expect(session.url).toBe('https://portal.upag.io/tok');
+  });
+});
+
+describe('portal', () => {
+  const portal = () => new Upag({ apiKey: 'tok', baseURL: 'https://api.upag.dev/v1' }).portal;
+
+  it('authenticates with the session token', async () => {
+    await portal().me();
+    expect(sent[0].method).toBe('get');
+    expect(sent[0].url).toBe('https://api.upag.dev/v1/portal/me');
+    expect(sent[0].headers.Authorization).toBe('Bearer tok');
+  });
+
+  it('goes to production without a baseURL, since a token has no test prefix', async () => {
+    await new Upag({ apiKey: 'tok' }).portal.me();
+    expect(sent[0].url).toBe('https://api.upag.io/v1/portal/me');
+  });
+
+  it('attaches a tokenized card', async () => {
+    await portal().attachCard({ card: 'card' });
+    expect(sent[0].method).toBe('post');
+    expect(sent[0].url).toBe('https://api.upag.dev/v1/portal/payment-methods');
+    expect(sent[0].data).toEqual({ card: 'card' });
+  });
+
+  it("switches a subscription's payment method", async () => {
+    await portal().updatePaymentMethod('sub', { paymentMethod: 'card', card: 'card' });
+    expect(sent[0].method).toBe('post');
+    expect(sent[0].url).toBe('https://api.upag.dev/v1/portal/subscriptions/sub/payment-method');
+    expect(sent[0].data).toEqual({ paymentMethod: 'card', card: 'card' });
+  });
+
+  it('previews a plan change', async () => {
+    await portal().previewSubscriptionUpdate('sub', { item: 'item', price: 'price' });
+    expect(sent[0].method).toBe('post');
+    expect(sent[0].url).toBe('https://api.upag.dev/v1/portal/subscriptions/sub/preview');
+    expect(sent[0].data).toEqual({ item: 'item', price: 'price' });
+    expect(sent[0].headers['Idempotency-Key']).toBeUndefined();
+  });
+
+  it('changes the plan, sending the Idempotency-Key header only when given', async () => {
+    reply = { status: 200, data: { outcome: 'requires_payment', checkoutUrl: 'https://checkout.upag.io/cs/x' } };
+    const params = { item: 'item', price: 'price' };
+    const update = await portal().updateSubscription('sub', params, { idempotencyKey: 'k-1' });
+    await portal().updateSubscription('sub', params);
+    expect(sent[0].method).toBe('post');
+    expect(sent[0].url).toBe('https://api.upag.dev/v1/portal/subscriptions/sub/update');
+    expect(sent[0].data).toEqual(params);
+    expect(sent[0].headers['Idempotency-Key']).toBe('k-1');
+    expect(sent[1].headers['Idempotency-Key']).toBeUndefined();
+    expect(update.checkoutUrl).toBe('https://checkout.upag.io/cs/x');
+  });
+});
+
 describe('error handling', () => {
   it('reads the core nested error shape', async () => {
     reply = {

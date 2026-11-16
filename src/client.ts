@@ -5,6 +5,8 @@ import { Products } from './resources/products';
 import { Prices } from './resources/prices';
 import { CheckoutSessions } from './resources/checkout-sessions';
 import { CheckoutLayouts } from './resources/checkout-layouts';
+import { BillingPortal } from './resources/billing-portal';
+import { Portal } from './resources/portal';
 import { Subscriptions } from './resources/subscriptions';
 import { Invoices } from './resources/invoices';
 import { PaymentLinks } from './resources/payment-links';
@@ -26,6 +28,8 @@ export class Upag {
   public readonly prices: Prices;
   public readonly checkoutSessions: CheckoutSessions;
   public readonly checkoutLayouts: CheckoutLayouts;
+  public readonly billingPortal: BillingPortal;
+  public readonly portal: Portal;
   public readonly subscriptions: Subscriptions;
   public readonly invoices: Invoices;
   public readonly paymentLinks: PaymentLinks;
@@ -57,6 +61,8 @@ export class Upag {
     this.prices = new Prices(this.http);
     this.checkoutSessions = new CheckoutSessions(this.http);
     this.checkoutLayouts = new CheckoutLayouts(this.http);
+    this.billingPortal = new BillingPortal(this.http);
+    this.portal = new Portal(this.http);
     this.subscriptions = new Subscriptions(this.http);
     this.invoices = new Invoices(this.http);
     this.paymentLinks = new PaymentLinks(this.http);
