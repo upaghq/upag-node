@@ -1502,7 +1502,7 @@ export const WebhookEvent = {
   CHECKOUT_SESSION_UPDATED: 'checkout-session.updated',
   CHECKOUT_SESSION_COMPLETED: 'checkout-session.completed',
   CHECKOUT_SESSION_EXPIRED: 'checkout-session.expired',
-  BILLING_PORTAL_SESSION_CREATED: 'billing_portal.session.created',
+  PORTAL_SESSION_CREATED: 'portal.session.created',
   PRODUCT_CREATED: 'product.created',
   PRODUCT_UPDATED: 'product.updated',
   PRICE_CREATED: 'price.created',
@@ -1526,7 +1526,7 @@ export interface WebhookDeliveryPayload<T = Record<string, unknown>> {
   /** The resource the event is about, in the same shape the API returns. Related entities appear as ids. */
   data: T;
   /** Only when the customer made the change in the billing portal, not you. */
-  source?: { type: 'billing_portal'; session: string };
+  source?: { type: 'portal'; session: string };
 }
 
 export interface Webhook {

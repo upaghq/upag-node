@@ -268,7 +268,7 @@ const update = await portal.updateSubscription(subscription.id, change, { idempo
 // update.outcome is 'applied', 'scheduled' or 'requires_payment' (then send the customer to update.checkoutUrl)
 ```
 
-Changes the customer makes arrive as `subscription.updated` with `source: { type: 'billing_portal', session }` next to `data`.
+Changes the customer makes arrive as `subscription.updated` with `source: { type: 'portal', session }` next to `data`.
 
 ### Files
 
