@@ -231,6 +231,45 @@ await upag.checkoutSessions.confirm(session.id, {
 
 When the trial ends the subscription charges the card on file. With no card, `create_invoice` bills by Pix and `cancel` cancels the subscription with reason `missing_payment_method`. The `subscription.trial_ending` webhook is sent three days before the end.
 
+### Billing portal
+
+The portal is the page where a customer manages their own subscription. A configuration says what it offers; a session is the link you hand to one customer. It has to be enabled for the account (`403 feature_flag_disabled` until then).
+
+```typescript
+const configuration = await upag.billingPortal.configurations.create({
+  subscriptionUpdate: true,
+  products: [{ product: product.id, prices: [price.id] }],
+});
+
+// Without `configuration` the session uses the account's default one
+const session = await upag.billingPortal.sessions.create({
+  customer: customer.id,
+  configuration: configuration.id,
+  returnUrl: 'https://example.com/account',
+});
+// Redirect the customer to session.url. It is shown only in this response.
+```
+
+`upag.portal` is the customer side, the routes the portal page calls. They take no API key: build the client with the session token (the last path segment of `session.url`) as `apiKey`. A token has no `sk_test_` prefix, so pass `baseURL` to reach the sandbox.
+
+```typescript
+const token = new URL(session.url).pathname.split('/').pop()!;
+const { portal } = new Upag({ apiKey: token, baseURL: 'https://api.upag.dev/v1' });
+
+const me = await portal.me();
+const [subscription] = me.subscriptions;
+const [item] = subscription.items;
+
+await portal.updatePaymentMethod(subscription.id, { paymentMethod: 'pix' });
+
+const change = { item: item.id, price: item.eligiblePrices[0].id };
+const preview = await portal.previewSubscriptionUpdate(subscription.id, change);
+const update = await portal.updateSubscription(subscription.id, change, { idempotencyKey: 'upgrade-1' });
+// update.outcome is 'applied', 'scheduled' or 'requires_payment' (then send the customer to update.checkoutUrl)
+```
+
+Changes the customer makes arrive as `subscription.updated` with `source: { type: 'portal', session }` next to `data`.
+
 ### Files
 
 ```typescript

@@ -6,6 +6,12 @@ export { Products } from './resources/products';
 export { Prices } from './resources/prices';
 export { CheckoutSessions } from './resources/checkout-sessions';
 export { CheckoutLayouts } from './resources/checkout-layouts';
+export {
+  BillingPortal,
+  BillingPortalConfigurations,
+  BillingPortalSessions,
+} from './resources/billing-portal';
+export { Portal } from './resources/portal';
 export { Subscriptions } from './resources/subscriptions';
 export { Invoices } from './resources/invoices';
 export { PaymentLinks } from './resources/payment-links';

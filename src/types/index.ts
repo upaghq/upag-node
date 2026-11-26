@@ -900,6 +900,201 @@ export interface CreateCheckoutLayoutParams {
 export type UpdateCheckoutLayoutParams = Partial<CreateCheckoutLayoutParams>;
 export type ListCheckoutLayoutsParams = ListParams;
 
+export type BillingPortalProrationBehavior = 'create_prorations' | 'none';
+export type BillingPortalDowngradeTiming = 'period_end' | 'immediately';
+export type BillingPortalFlowType = 'payment_method_update' | 'subscription_update';
+
+/** Opens the portal on one task for one subscription, instead of the full portal. */
+export interface BillingPortalFlow {
+  type: BillingPortalFlowType;
+  subscription: string;
+}
+
+export interface BillingPortalConfigurationProduct {
+  product: string;
+  /** Recurring, active prices of `product` the customer may switch to. */
+  prices: string[];
+}
+
+export interface BillingPortalConfiguration {
+  id: string;
+  /** `null` on the default the API creates on demand. */
+  name: string | null;
+  isDefault: boolean;
+  active: boolean;
+  paymentMethodUpdate: boolean;
+  subscriptionUpdate: boolean;
+  prorationBehavior: BillingPortalProrationBehavior;
+  downgradeTiming: BillingPortalDowngradeTiming;
+  defaultReturnUrl: string | null;
+  products: BillingPortalConfigurationProduct[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateBillingPortalConfigurationParams {
+  name?: string | null;
+  /** Unsets the previous default. A default must be active. */
+  isDefault?: boolean;
+  active?: boolean;
+  /** @default true */
+  paymentMethodUpdate?: boolean;
+  /** Needs at least one price in `products`. @default false */
+  subscriptionUpdate?: boolean;
+  /** @default 'create_prorations' */
+  prorationBehavior?: BillingPortalProrationBehavior;
+  /** @default 'period_end' */
+  downgradeTiming?: BillingPortalDowngradeTiming;
+  defaultReturnUrl?: string | null;
+  /** Up to 10 products with 1 to 20 prices each. On update it replaces the whole set. */
+  products?: BillingPortalConfigurationProduct[];
+}
+
+export type UpdateBillingPortalConfigurationParams = CreateBillingPortalConfigurationParams;
+export type ListBillingPortalConfigurationsParams = ListParams;
+
+/** A session copies its configuration when created; later edits to the configuration do not reach it. */
+export interface BillingPortalSession {
+  id: string;
+  customer: string;
+  configuration: string;
+  flow: BillingPortalFlow | null;
+  returnUrl: string | null;
+  paymentMethodUpdate: boolean;
+  subscriptionUpdate: boolean;
+  prorationBehavior: BillingPortalProrationBehavior;
+  downgradeTiming: BillingPortalDowngradeTiming;
+  expiresAt: string;
+  createdAt: string;
+}
+
+export interface CreatedBillingPortalSession extends BillingPortalSession {
+  /** The portal address, whose last path segment is the session token. Shown only here. */
+  url: string;
+}
+
+export interface CreateBillingPortalSessionParams {
+  customer: string;
+  /** Omitted: the account's default configuration, created on demand. */
+  configuration?: string;
+  /** Omitted: the configuration's `defaultReturnUrl`. */
+  returnUrl?: string;
+  flow?: BillingPortalFlow;
+  /** Seconds the link stays valid, 60 to 86400. @default 3600 */
+  expiresIn?: number;
+}
+
+export interface PortalCard {
+  id: string;
+  brand: CardBrand;
+  lastDigits: string;
+  expirationMonth: number;
+  expirationYear: number;
+}
+
+/** The session's customer with document and phone partly hidden. */
+export interface PortalCustomer {
+  id: string;
+  name: string;
+  email: string | null;
+  document: { type: DocumentType; number: string } | null;
+  phone?: Phone;
+  address?: Address;
+  /** Active, unexpired cards, the default one first. */
+  cards: PortalCard[];
+}
+
+export interface PortalSubscriptionItem extends SubscriptionItem {
+  /** Other prices of the item's product the session allows, in the subscription's currency and interval. */
+  eligiblePrices: Price[];
+}
+
+/** A subscription as the portal returns it. Unlike `Subscription`, it may be paid by boleto. */
+export interface PortalSubscription extends Omit<Subscription, 'paymentMethod'> {
+  paymentMethod: PaymentMethodType | null;
+}
+
+export interface PortalOverviewSubscription extends Omit<PortalSubscription, 'items'> {
+  items: PortalSubscriptionItem[];
+}
+
+export interface PortalOverview {
+  session: Pick<
+    BillingPortalSession,
+    'id' | 'flow' | 'returnUrl' | 'paymentMethodUpdate' | 'subscriptionUpdate' | 'expiresAt'
+  >;
+  customer: PortalCustomer;
+  /** The account's `pk_` key, to tokenize a new card with `cards.create`. */
+  publishableKey: string;
+  /** The customer's subscriptions that can still change; only the flow's one when the session has a flow. */
+  subscriptions: PortalOverviewSubscription[];
+  /** Payment methods active on the account. */
+  paymentMethods: PaymentMethodType[];
+}
+
+export interface AttachPortalCardParams {
+  card: string;
+}
+
+export interface UpdatePortalPaymentMethodParams {
+  paymentMethod: PaymentMethodType;
+  /** Required with `card`, rejected with the other methods. */
+  card?: string;
+}
+
+export interface PortalPlanChangeParams {
+  /** The subscription item to switch. */
+  item: string;
+  /** One of the item's `eligiblePrices`. */
+  price: string;
+}
+
+export type PortalPlanChangeOutcome = 'applied' | 'scheduled' | 'requires_payment';
+
+export interface ProrationLine {
+  type: 'credit' | 'charge';
+  /** `null` for an item the change would add. */
+  item: string | null;
+  price: string;
+  description: string;
+  /** Cents; negative on a credit. */
+  amount: number;
+}
+
+export interface Proration {
+  subscription: string;
+  currency: Currency;
+  calculatedAt: string;
+  period: { startDate: string; endDate: string };
+  lines: ProrationLine[];
+  /** Charged now when positive, credited when negative. */
+  amountDue: number;
+  nextAmount: number;
+  items: { item: string | null; price: string; quantity: number; amount: number }[];
+}
+
+export interface PortalSubscriptionUpdatePreview {
+  outcome: PortalPlanChangeOutcome;
+  item: string;
+  price: Price;
+  quantity: number;
+  /** The item's new total per period (`price.amount × quantity`). */
+  totalAmount: number;
+  /** `null` when the switch is not prorated. */
+  proration: Proration | null;
+}
+
+export interface PortalSubscriptionUpdate {
+  outcome: PortalPlanChangeOutcome;
+  /** On `requires_payment` and `scheduled` the item still has the old price. */
+  subscription: PortalSubscription;
+  checkoutSession: string | null;
+  /** Where the customer pays the difference, on `requires_payment`. */
+  checkoutUrl: string | null;
+  /** The balance credit of an immediate, prorated downgrade. */
+  customerBalanceTransaction: string | null;
+}
+
 export type FilePurpose =
   | 'business_icon'
   | 'business_logo'
@@ -1307,6 +1502,7 @@ export const WebhookEvent = {
   CHECKOUT_SESSION_UPDATED: 'checkout-session.updated',
   CHECKOUT_SESSION_COMPLETED: 'checkout-session.completed',
   CHECKOUT_SESSION_EXPIRED: 'checkout-session.expired',
+  PORTAL_SESSION_CREATED: 'portal.session.created',
   PRODUCT_CREATED: 'product.created',
   PRODUCT_UPDATED: 'product.updated',
   PRICE_CREATED: 'price.created',
@@ -1329,6 +1525,8 @@ export interface WebhookDeliveryPayload<T = Record<string, unknown>> {
   createdAt: string;
   /** The resource the event is about, in the same shape the API returns. Related entities appear as ids. */
   data: T;
+  /** Only when the customer made the change in the billing portal, not you. */
+  source?: { type: 'portal'; session: string };
 }
 
 export interface Webhook {
